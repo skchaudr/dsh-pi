@@ -24,6 +24,7 @@ export { PiExtensionRuntime } from './runtime.js'
 export { toDshParameters } from './schema.js'
 export * from './trajectory.js'
 export * from './ingest.js'
+export * from './control.js'
 
 export const name = 'dsh-pi'
 export const inject = ['agents', 'tools', 'commands', 'systemPrompt', 'attachments']
