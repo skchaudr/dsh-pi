@@ -77,20 +77,9 @@ export function mirrorAcpMessageToDsh(
     }
 
     case 'session/cancel': {
-      const reason = typeof params.reason === 'string' ? params.reason : 'Cancelled via ACP'
-      return {
-        seq,
-        time,
-        type: 'control/intervention',
-        data: {
-          verb: 'abort',
-          targetSessionId: sessionId,
-          operator: 'acp-client',
-          reason,
-          timestamp: new Date(time).toISOString(),
-          outcome: 'success',
-        },
-      }
+      // Cancel audit truth is owned by ControlPlaneManager.abort() via AcpSessionMirror.
+      // Pure translation without a manager result cannot claim success.
+      return null
     }
 
     case 'session/update': {
@@ -166,15 +155,12 @@ export class AcpSessionMirror {
   }> {
     this.seq++
     const time = Date.now()
-    const event = mirrorAcpMessageToDsh(message, this.defaultSessionId, { seq: this.seq, time })
 
-    if (event !== null) {
-      this.events.push(event)
-    }
+    if (message.method === 'session/cancel') {
+      if (this.controlManager === undefined) {
+        return { event: null }
+      }
 
-    let controlResult: ControlResult | undefined
-
-    if (message.method === 'session/cancel' && this.controlManager !== undefined) {
       const sessionId = typeof message.params?.sessionId === 'string'
         ? message.params.sessionId
         : this.defaultSessionId
@@ -188,16 +174,30 @@ export class AcpSessionMirror {
         reason,
       })
 
-      controlResult = {
+      const controlResult: ControlResult = {
         ok: abortRes.ok,
         auditEvent: abortRes.auditEvent,
         ...(abortRes.error !== undefined ? { error: abortRes.error } : {}),
       }
+
+      // Sole audit truth: the manager abort receipt, never a speculative success.
+      const event: DshSessionEvent = {
+        seq: this.seq,
+        time,
+        type: 'control/intervention',
+        data: { ...abortRes.auditEvent },
+      }
+      this.events.push(event)
+
+      return { event, controlResult }
     }
 
-    return {
-      event,
-      ...(controlResult !== undefined ? { controlResult } : {}),
+    const event = mirrorAcpMessageToDsh(message, this.defaultSessionId, { seq: this.seq, time })
+
+    if (event !== null) {
+      this.events.push(event)
     }
+
+    return { event }
   }
 }

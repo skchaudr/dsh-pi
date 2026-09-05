@@ -109,9 +109,17 @@ function buildBaseAudit(
   }
 }
 
+/** Optional sink invoked once per recorded audit event (receipt seam). */
+export type ControlReceiptSink = (event: ControlAuditEvent) => void | Promise<void>
+
 export class ControlPlaneManager {
   private readonly sessions = new Map<string, RegisteredSessionEntry>()
   private readonly auditLog: ControlAuditEvent[] = []
+  private readonly receiptSink: ControlReceiptSink | undefined
+
+  constructor(options?: { receiptSink?: ControlReceiptSink }) {
+    this.receiptSink = options?.receiptSink
+  }
 
   registerSession(
     sessionId: string,
@@ -145,6 +153,13 @@ export class ControlPlaneManager {
     return this.sessions.get(sessionId)?.handle
   }
 
+  private async recordAudit(event: ControlAuditEvent): Promise<void> {
+    this.auditLog.push(event)
+    if (this.receiptSink !== undefined) {
+      await this.receiptSink(event)
+    }
+  }
+
   async annotate(req: AnnotateControlRequest): Promise<ControlResult> {
     const timestamp = req.timestamp ?? new Date().toISOString()
     const base = buildBaseAudit('annotate', req.targetSessionId, req.operator, timestamp, req.targetNodeId, req.reason)
@@ -156,17 +171,35 @@ export class ControlPlaneManager {
       ...(session?.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
     }
 
-    try {
-      if (session?.handle.onAnnotate !== undefined) {
-        await session.handle.onAnnotate(req)
+    if (session === undefined) {
+      const auditEvent: ControlAuditEvent = {
+        ...base,
+        outcome: 'noop',
+        details: { ...details, note: 'session_not_found' },
       }
+      await this.recordAudit(auditEvent)
+      return { ok: false, auditEvent, error: 'Session not found' }
+    }
+
+    if (session.handle.onAnnotate === undefined) {
+      const auditEvent: ControlAuditEvent = {
+        ...base,
+        outcome: 'failed',
+        details: { ...details, note: 'actuator_missing', actuator: 'onAnnotate' },
+      }
+      await this.recordAudit(auditEvent)
+      return { ok: false, auditEvent, error: 'Annotate actuator not registered' }
+    }
+
+    try {
+      await session.handle.onAnnotate(req)
 
       const auditEvent: ControlAuditEvent = {
         ...base,
         outcome: 'success',
         details,
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return { ok: true, auditEvent }
     } catch (error) {
@@ -175,7 +208,7 @@ export class ControlPlaneManager {
         outcome: 'failed',
         details: { ...details, error: error instanceof Error ? error.message : String(error) },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return {
         ok: false,
@@ -202,14 +235,27 @@ export class ControlPlaneManager {
         outcome: 'noop',
         details: { ...details, note: session === undefined ? 'session_not_found' : 'session_aborted' },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
       return { ok: false, auditEvent, error: 'Session not active' }
     }
 
-    try {
-      if (session.handle.onSteer !== undefined) {
-        await session.handle.onSteer(req)
+    if (session.handle.onSteer === undefined) {
+      const auditEvent: ControlAuditEvent = {
+        ...base,
+        outcome: 'failed',
+        details: {
+          ...details,
+          note: 'actuator_missing',
+          actuator: 'onSteer',
+          ...(session.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
+        },
       }
+      await this.recordAudit(auditEvent)
+      return { ok: false, auditEvent, error: 'Steer actuator not registered' }
+    }
+
+    try {
+      await session.handle.onSteer(req)
 
       const auditEvent: ControlAuditEvent = {
         ...base,
@@ -219,7 +265,7 @@ export class ControlPlaneManager {
           ...(session.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
         },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return { ok: true, auditEvent }
     } catch (error) {
@@ -228,7 +274,7 @@ export class ControlPlaneManager {
         outcome: 'failed',
         details: { ...details, error: error instanceof Error ? error.message : String(error) },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return {
         ok: false,
@@ -255,14 +301,22 @@ export class ControlPlaneManager {
         outcome: 'noop',
         details: { ...reassignDetails, note: session === undefined ? 'session_not_found' : 'session_aborted' },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
       return { ok: false, auditEvent, error: 'Session not active' }
     }
 
-    try {
-      if (session.handle.onReassign !== undefined) {
-        await session.handle.onReassign(req)
+    if (session.handle.onReassign === undefined) {
+      const auditEvent: ControlAuditEvent = {
+        ...base,
+        outcome: 'failed',
+        details: { ...reassignDetails, note: 'actuator_missing', actuator: 'onReassign' },
       }
+      await this.recordAudit(auditEvent)
+      return { ok: false, auditEvent, error: 'Reassign actuator not registered' }
+    }
+
+    try {
+      await session.handle.onReassign(req)
 
       if (session.handle.meta === undefined) {
         session.handle.meta = {}
@@ -279,7 +333,7 @@ export class ControlPlaneManager {
           sessionMeta: session.handle.meta,
         },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return { ok: true, auditEvent }
     } catch (error) {
@@ -288,7 +342,7 @@ export class ControlPlaneManager {
         outcome: 'failed',
         details: { ...reassignDetails, error: error instanceof Error ? error.message : String(error) },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return {
         ok: false,
@@ -307,16 +361,33 @@ export class ControlPlaneManager {
       ...(req.overrideParams !== undefined ? { overrideParams: req.overrideParams } : {}),
     }
 
+    if (session === undefined) {
+      const auditEvent: ControlAuditEvent = {
+        ...base,
+        outcome: 'noop',
+        details: { ...details, note: 'session_not_found' },
+      }
+      await this.recordAudit(auditEvent)
+      return { ok: false, auditEvent, error: 'Session not found' }
+    }
+
+    if (session.handle.onRespawn === undefined) {
+      const auditEvent: ControlAuditEvent = {
+        ...base,
+        outcome: 'failed',
+        details: { ...details, note: 'actuator_missing', actuator: 'onRespawn' },
+      }
+      await this.recordAudit(auditEvent)
+      return { ok: false, auditEvent, error: 'Respawn actuator not registered' }
+    }
+
     try {
-      if (session !== undefined && !session.aborted && session.handle.controller !== undefined) {
+      if (!session.aborted && session.handle.controller !== undefined) {
         session.handle.controller.abort(new Error(`Session respawned by operator ${req.operator}`))
         session.aborted = true
       }
 
-      let respawnResult: { newSessionId?: string } | void = undefined
-      if (session?.handle.onRespawn !== undefined) {
-        respawnResult = await session.handle.onRespawn(req)
-      }
+      const respawnResult = await session.handle.onRespawn(req)
 
       const newSessionId = respawnResult && typeof respawnResult === 'object' && respawnResult.newSessionId !== undefined
         ? respawnResult.newSessionId
@@ -330,7 +401,7 @@ export class ControlPlaneManager {
           ...(newSessionId !== undefined ? { newSessionId } : {}),
         },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return {
         ok: true,
@@ -343,7 +414,7 @@ export class ControlPlaneManager {
         outcome: 'failed',
         details: { ...details, error: error instanceof Error ? error.message : String(error) },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return {
         ok: false,
@@ -368,7 +439,7 @@ export class ControlPlaneManager {
           ...checkpointMeta,
         },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
       return {
         ok: true,
         aborted: false,
@@ -386,7 +457,7 @@ export class ControlPlaneManager {
           ...checkpointMeta,
         },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
       return {
         ok: true,
         aborted: false,
@@ -394,8 +465,28 @@ export class ControlPlaneManager {
       }
     }
 
+    if (session.handle.controller === undefined) {
+      const auditEvent: ControlAuditEvent = {
+        ...base,
+        outcome: 'failed',
+        details: {
+          note: 'actuator_missing',
+          actuator: 'AbortController',
+          ...(session.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
+          ...checkpointMeta,
+        },
+      }
+      await this.recordAudit(auditEvent)
+      return {
+        ok: false,
+        aborted: false,
+        auditEvent,
+        error: 'Abort actuator not registered',
+      }
+    }
+
     try {
-      session.handle.controller?.abort(new Error(`Aborted by operator ${request.operator}: ${request.reason}`))
+      session.handle.controller.abort(new Error(`Aborted by operator ${request.operator}: ${request.reason}`))
       session.aborted = true
 
       const auditEvent: ControlAuditEvent = {
@@ -406,7 +497,7 @@ export class ControlPlaneManager {
           ...checkpointMeta,
         },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return {
         ok: true,
@@ -422,7 +513,7 @@ export class ControlPlaneManager {
           ...checkpointMeta,
         },
       }
-      this.auditLog.push(auditEvent)
+      await this.recordAudit(auditEvent)
 
       return {
         ok: false,

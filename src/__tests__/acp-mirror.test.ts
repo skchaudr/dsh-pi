@@ -94,7 +94,35 @@ describe('S5: ACP Message Mirroring into Canonical DSH SessionEvents', () => {
 
     expect(cancelRes.event?.type).toBe('control/intervention')
     expect(cancelRes.controlResult?.ok).toBe(true)
+    expect(cancelRes.controlResult?.auditEvent.outcome).toBe('success')
+    expect((cancelRes.event?.data as { outcome?: string }).outcome).toBe('success')
+    expect((cancelRes.event?.data as { outcome?: string }).outcome)
+      .toBe(cancelRes.controlResult?.auditEvent.outcome)
     expect(controller.signal.aborted).toBe(true)
     expect(mirror.getMirroredEvents()).toHaveLength(2)
+  })
+
+  it('uses manager abort outcome as sole cancel audit truth (noop/missing actuator)', async () => {
+    const controlManager = new ControlPlaneManager()
+    const mirror = new AcpSessionMirror('missing-session', controlManager)
+
+    const missing = await mirror.ingestMessage({
+      method: 'session/cancel',
+      params: { sessionId: 'missing-session', reason: 'gone' },
+    })
+    expect(missing.controlResult?.auditEvent.outcome).toBe('noop')
+    expect((missing.event?.data as { outcome?: string }).outcome).toBe('noop')
+    expect(mirrorAcpMessageToDsh({ method: 'session/cancel', params: { sessionId: 'x' } })).toBeNull()
+
+    controlManager.registerSession('no-controller', { meta: { bare: true } })
+    const failed = await mirror.ingestMessage({
+      method: 'session/cancel',
+      params: { sessionId: 'no-controller', reason: 'no actuator' },
+    })
+    expect(failed.controlResult?.ok).toBe(false)
+    expect(failed.controlResult?.auditEvent.outcome).toBe('failed')
+    expect((failed.event?.data as { outcome?: string }).outcome).toBe('failed')
+    expect((failed.event?.data as { details?: { actuator?: string } }).details?.actuator)
+      .toBe('AbortController')
   })
 })

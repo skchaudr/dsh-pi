@@ -258,12 +258,92 @@ describe('S4: Full 5-Verb Control Plane Backend', () => {
     })
   })
 
+  describe('fail-closed without required actuators', () => {
+    it('rejects annotate/steer/reassign/respawn/abort when target or actuator is missing', async () => {
+      const manager = new ControlPlaneManager()
+      manager.registerSession('session_no_actuators', { meta: { agent: 'bare' } })
+
+      const annotate = await manager.annotate({
+        targetSessionId: 'session_no_actuators',
+        annotation: 'note',
+        operator: 'sab',
+      })
+      expect(annotate.ok).toBe(false)
+      expect(annotate.auditEvent.outcome).toBe('failed')
+      expect(annotate.auditEvent.details?.['actuator']).toBe('onAnnotate')
+
+      const steer = await manager.steer({
+        targetSessionId: 'session_no_actuators',
+        prompt: 'go left',
+        operator: 'sab',
+      })
+      expect(steer.ok).toBe(false)
+      expect(steer.auditEvent.outcome).toBe('failed')
+      expect(steer.auditEvent.details?.['actuator']).toBe('onSteer')
+
+      const reassign = await manager.reassign({
+        targetSessionId: 'session_no_actuators',
+        model: 'x',
+        operator: 'sab',
+      })
+      expect(reassign.ok).toBe(false)
+      expect(reassign.auditEvent.details?.['actuator']).toBe('onReassign')
+
+      const respawn = await manager.respawn({
+        targetSessionId: 'session_no_actuators',
+        operator: 'sab',
+      })
+      expect(respawn.ok).toBe(false)
+      expect(respawn.auditEvent.details?.['actuator']).toBe('onRespawn')
+
+      const abort = await manager.abort({
+        targetSessionId: 'session_no_actuators',
+        operator: 'sab',
+        reason: 'stop',
+      })
+      expect(abort.ok).toBe(false)
+      expect(abort.aborted).toBe(false)
+      expect(abort.auditEvent.details?.['actuator']).toBe('AbortController')
+
+      const missing = await manager.annotate({
+        targetSessionId: 'missing',
+        annotation: 'x',
+        operator: 'sab',
+      })
+      expect(missing.ok).toBe(false)
+      expect(missing.auditEvent.outcome).toBe('noop')
+    })
+
+    it('invokes receipt sink once per recorded audit event', async () => {
+      const receipts: string[] = []
+      const manager = new ControlPlaneManager({
+        receiptSink: (event) => { receipts.push(`${event.verb}:${event.outcome}`) },
+      })
+      const controller = new AbortController()
+      manager.registerSession('session_sink', {
+        controller,
+        onAnnotate: vi.fn(),
+      })
+
+      await manager.annotate({ targetSessionId: 'session_sink', annotation: 'a', operator: 'sab' })
+      await manager.abort({ targetSessionId: 'session_sink', operator: 'sab', reason: 'done' })
+      await manager.abort({ targetSessionId: 'session_sink', operator: 'sab', reason: 'again' })
+
+      expect(receipts).toEqual(['annotate:success', 'abort:success', 'abort:noop'])
+    })
+  })
+
   describe('audit history', () => {
     it('records sequence of diverse control verbs in global and per-session timeline', async () => {
       const manager = new ControlPlaneManager()
       const c1 = new AbortController()
 
-      manager.registerSession('session_1', c1)
+      manager.registerSession('session_1', {
+        controller: c1,
+        onAnnotate: vi.fn(),
+        onSteer: vi.fn(),
+        onReassign: vi.fn(),
+      })
 
       await manager.annotate({ targetSessionId: 'session_1', annotation: 'flagged note', operator: 'sab' })
       await manager.steer({ targetSessionId: 'session_1', prompt: 'steer direction', operator: 'sab' })
@@ -273,6 +353,7 @@ describe('S4: Full 5-Verb Control Plane Backend', () => {
       const history = manager.getAuditHistory('session_1')
       expect(history).toHaveLength(4)
       expect(history.map(h => h.verb)).toEqual(['annotate', 'steer', 'reassign', 'abort'])
+      expect(history.every(h => h.outcome === 'success')).toBe(true)
     })
   })
 })
