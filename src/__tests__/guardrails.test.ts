@@ -32,6 +32,11 @@ describe('S5: Automated Performance & Prefix-Cache Guardrails', () => {
   })
 
   it('triggers annotation when TTFT exceeds threshold', async () => {
+    const annotations: string[] = []
+    controlManager.registerSession('session-ttft-spike', {
+      onAnnotate: (req) => { annotations.push(req.annotation) },
+    })
+
     const monitor = new GuardrailMonitor(controlManager, {
       maxTtftMs: 1500,
     })
@@ -49,6 +54,7 @@ describe('S5: Automated Performance & Prefix-Cache Guardrails', () => {
     expect(evaluation.controlResult?.ok).toBe(true)
     expect(evaluation.controlResult?.auditEvent.verb).toBe('annotate')
     expect(evaluation.controlResult?.auditEvent.details?.flag).toBe('warning_guardrail')
+    expect(annotations).toHaveLength(1)
   })
 
   it('triggers auto-abort when cumulative budget is exceeded', async () => {
