@@ -1,3 +1,5 @@
+import type { Session } from '@deepseek-ai/dsh-session'
+
 export type ControlVerb = 'abort' | 'annotate' | 'steer' | 'reassign' | 'respawn'
 
 export interface ControlAuditEvent {
@@ -111,6 +113,32 @@ function buildBaseAudit(
 
 /** Optional sink invoked once per recorded audit event (receipt seam). */
 export type ControlReceiptSink = (event: ControlAuditEvent) => void | Promise<void>
+
+declare module '@deepseek-ai/dsh-session/types' {
+  interface SessionEventMap {
+    /**
+     * Canonical receipt for one control-plane actuation, recorded exactly
+     * once per audit event whatever the outcome. Log-only (no SurfaceIntent);
+     * the operator `timestamp` is a source position — Session allocates
+     * seq/time. The known-type catalog has no control verb, so this extends
+     * the vocabulary via the documented plugin-extension mechanism.
+     */
+    'control/intervention': Omit<ControlAuditEvent, 'type'>
+  }
+}
+
+/**
+ * Canonical receipt sink: bridge the control audit into a DSH session log.
+ * `Session.append` is the sole writer/sequence allocator; a non-JSON payload
+ * rejects at the append site and propagates — a receipt that did not land is
+ * never reported as recorded (fail-closed).
+ */
+export function createDshReceiptSink(session: Session): ControlReceiptSink {
+  return (event) => {
+    const { type: _type, ...receipt } = event
+    session.append('control/intervention', receipt)
+  }
+}
 
 export class ControlPlaneManager {
   private readonly sessions = new Map<string, RegisteredSessionEntry>()
