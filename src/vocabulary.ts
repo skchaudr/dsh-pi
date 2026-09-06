@@ -20,6 +20,8 @@ declare module '@deepseek-ai/dsh-session/types' {
       dispatchCallId: string
       subagentName: string
       task: string
+      /** Parent tool-call id when the spawn was nested under a dispatch. */
+      parentCallId?: string
       block: ToolCallBlock
     }
   }

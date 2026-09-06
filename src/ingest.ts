@@ -333,6 +333,7 @@ export function translatePiEvent(
         dispatchCallId: spawn.dispatchCallId,
         subagentName: spawn.subagentName,
         task: spawn.task,
+        ...(spawn.parentId !== undefined ? { parentCallId: spawn.parentId } : {}),
         block: foldedBlock,
       },
     })
