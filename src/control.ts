@@ -140,6 +140,21 @@ export function createDshReceiptSink(session: Session): ControlReceiptSink {
   }
 }
 
+/**
+ * Bind one live DSH session to a control manager whose only receipt writer is
+ * `Session.append`. Callers that also construct `AcpSessionMirror` must not
+ * pass the same session into the mirror — one sink owner per session.
+ */
+export function attachDshSessionControl(
+  session: Session,
+  sessionId: string,
+  handle: SessionControlHandle,
+): ControlPlaneManager {
+  const manager = new ControlPlaneManager({ receiptSink: createDshReceiptSink(session) })
+  manager.registerSession(sessionId, handle)
+  return manager
+}
+
 export class ControlPlaneManager {
   private readonly sessions = new Map<string, RegisteredSessionEntry>()
   private readonly auditLog: ControlAuditEvent[] = []
@@ -221,29 +236,24 @@ export class ControlPlaneManager {
 
     try {
       await session.handle.onAnnotate(req)
-
-      const auditEvent: ControlAuditEvent = {
-        ...base,
-        outcome: 'success',
-        details,
-      }
-      await this.recordAudit(auditEvent)
-
-      return { ok: true, auditEvent }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       const auditEvent: ControlAuditEvent = {
         ...base,
         outcome: 'failed',
-        details: { ...details, error: error instanceof Error ? error.message : String(error) },
+        details: { ...details, error: message },
       }
       await this.recordAudit(auditEvent)
-
-      return {
-        ok: false,
-        auditEvent,
-        error: error instanceof Error ? error.message : String(error),
-      }
+      return { ok: false, auditEvent, error: message }
     }
+
+    const auditEvent: ControlAuditEvent = {
+      ...base,
+      outcome: 'success',
+      details,
+    }
+    await this.recordAudit(auditEvent)
+    return { ok: true, auditEvent }
   }
 
   async steer(req: SteerControlRequest): Promise<ControlResult> {
@@ -284,32 +294,27 @@ export class ControlPlaneManager {
 
     try {
       await session.handle.onSteer(req)
-
-      const auditEvent: ControlAuditEvent = {
-        ...base,
-        outcome: 'success',
-        details: {
-          ...details,
-          ...(session.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
-        },
-      }
-      await this.recordAudit(auditEvent)
-
-      return { ok: true, auditEvent }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       const auditEvent: ControlAuditEvent = {
         ...base,
         outcome: 'failed',
-        details: { ...details, error: error instanceof Error ? error.message : String(error) },
+        details: { ...details, error: message },
       }
       await this.recordAudit(auditEvent)
-
-      return {
-        ok: false,
-        auditEvent,
-        error: error instanceof Error ? error.message : String(error),
-      }
+      return { ok: false, auditEvent, error: message }
     }
+
+    const auditEvent: ControlAuditEvent = {
+      ...base,
+      outcome: 'success',
+      details: {
+        ...details,
+        ...(session.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
+      },
+    }
+    await this.recordAudit(auditEvent)
+    return { ok: true, auditEvent }
   }
 
   async reassign(req: ReassignControlRequest): Promise<ControlResult> {
@@ -345,39 +350,34 @@ export class ControlPlaneManager {
 
     try {
       await session.handle.onReassign(req)
-
-      if (session.handle.meta === undefined) {
-        session.handle.meta = {}
-      }
-      if (req.model !== undefined) session.handle.meta['model'] = req.model
-      if (req.provider !== undefined) session.handle.meta['provider'] = req.provider
-      if (req.permissionMode !== undefined) session.handle.meta['permissionMode'] = req.permissionMode
-
-      const auditEvent: ControlAuditEvent = {
-        ...base,
-        outcome: 'success',
-        details: {
-          ...reassignDetails,
-          sessionMeta: session.handle.meta,
-        },
-      }
-      await this.recordAudit(auditEvent)
-
-      return { ok: true, auditEvent }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       const auditEvent: ControlAuditEvent = {
         ...base,
         outcome: 'failed',
-        details: { ...reassignDetails, error: error instanceof Error ? error.message : String(error) },
+        details: { ...reassignDetails, error: message },
       }
       await this.recordAudit(auditEvent)
-
-      return {
-        ok: false,
-        auditEvent,
-        error: error instanceof Error ? error.message : String(error),
-      }
+      return { ok: false, auditEvent, error: message }
     }
+
+    if (session.handle.meta === undefined) {
+      session.handle.meta = {}
+    }
+    if (req.model !== undefined) session.handle.meta['model'] = req.model
+    if (req.provider !== undefined) session.handle.meta['provider'] = req.provider
+    if (req.permissionMode !== undefined) session.handle.meta['permissionMode'] = req.permissionMode
+
+    const auditEvent: ControlAuditEvent = {
+      ...base,
+      outcome: 'success',
+      details: {
+        ...reassignDetails,
+        sessionMeta: session.handle.meta,
+      },
+    }
+    await this.recordAudit(auditEvent)
+    return { ok: true, auditEvent }
   }
 
   async respawn(req: RespawnControlRequest): Promise<ControlResult> {
@@ -409,46 +409,41 @@ export class ControlPlaneManager {
       return { ok: false, auditEvent, error: 'Respawn actuator not registered' }
     }
 
+    let respawnResult: Awaited<ReturnType<NonNullable<SessionControlHandle['onRespawn']>>>
     try {
       if (!session.aborted && session.handle.controller !== undefined) {
         session.handle.controller.abort(new Error(`Session respawned by operator ${req.operator}`))
         session.aborted = true
       }
-
-      const respawnResult = await session.handle.onRespawn(req)
-
-      const newSessionId = respawnResult && typeof respawnResult === 'object' && respawnResult.newSessionId !== undefined
-        ? respawnResult.newSessionId
-        : undefined
-
-      const auditEvent: ControlAuditEvent = {
-        ...base,
-        outcome: 'success',
-        details: {
-          ...details,
-          ...(newSessionId !== undefined ? { newSessionId } : {}),
-        },
-      }
-      await this.recordAudit(auditEvent)
-
-      return {
-        ok: true,
-        auditEvent,
-        ...(newSessionId !== undefined ? { data: { newSessionId } } : {}),
-      }
+      respawnResult = await session.handle.onRespawn(req)
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       const auditEvent: ControlAuditEvent = {
         ...base,
         outcome: 'failed',
-        details: { ...details, error: error instanceof Error ? error.message : String(error) },
+        details: { ...details, error: message },
       }
       await this.recordAudit(auditEvent)
+      return { ok: false, auditEvent, error: message }
+    }
 
-      return {
-        ok: false,
-        auditEvent,
-        error: error instanceof Error ? error.message : String(error),
-      }
+    const newSessionId = respawnResult && typeof respawnResult === 'object' && respawnResult.newSessionId !== undefined
+      ? respawnResult.newSessionId
+      : undefined
+
+    const auditEvent: ControlAuditEvent = {
+      ...base,
+      outcome: 'success',
+      details: {
+        ...details,
+        ...(newSessionId !== undefined ? { newSessionId } : {}),
+      },
+    }
+    await this.recordAudit(auditEvent)
+    return {
+      ok: true,
+      auditEvent,
+      ...(newSessionId !== undefined ? { data: { newSessionId } } : {}),
     }
   }
 
@@ -516,39 +511,38 @@ export class ControlPlaneManager {
     try {
       session.handle.controller.abort(new Error(`Aborted by operator ${request.operator}: ${request.reason}`))
       session.aborted = true
-
-      const auditEvent: ControlAuditEvent = {
-        ...base,
-        outcome: 'success',
-        details: {
-          ...(session.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
-          ...checkpointMeta,
-        },
-      }
-      await this.recordAudit(auditEvent)
-
-      return {
-        ok: true,
-        aborted: true,
-        auditEvent,
-      }
     } catch (error) {
+      const message = error instanceof Error ? error.message : String(error)
       const auditEvent: ControlAuditEvent = {
         ...base,
         outcome: 'failed',
         details: {
-          error: error instanceof Error ? error.message : String(error),
+          error: message,
           ...checkpointMeta,
         },
       }
       await this.recordAudit(auditEvent)
-
       return {
         ok: false,
         aborted: false,
         auditEvent,
-        error: error instanceof Error ? error.message : String(error),
+        error: message,
       }
+    }
+
+    const auditEvent: ControlAuditEvent = {
+      ...base,
+      outcome: 'success',
+      details: {
+        ...(session.handle.meta !== undefined ? { sessionMeta: session.handle.meta } : {}),
+        ...checkpointMeta,
+      },
+    }
+    await this.recordAudit(auditEvent)
+    return {
+      ok: true,
+      aborted: true,
+      auditEvent,
     }
   }
 

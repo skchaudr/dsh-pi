@@ -374,14 +374,14 @@ describe('S4: Full 5-Verb Control Plane Backend', () => {
     })
 
     it('never reports success when the receipt sink itself fails', async () => {
-      const manager = new ControlPlaneManager({
-        receiptSink: () => { throw new Error('receipt store full') },
-      })
+      const receiptSink = vi.fn(() => { throw new Error('receipt store full') })
+      const manager = new ControlPlaneManager({ receiptSink })
       manager.registerSession('session_sink_fail', { onAnnotate: vi.fn() })
 
       await expect(
         manager.annotate({ targetSessionId: 'session_sink_fail', annotation: 'x', operator: 'sab' }),
       ).rejects.toThrow('receipt store full')
+      expect(receiptSink).toHaveBeenCalledOnce()
     })
   })
 
