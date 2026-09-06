@@ -1,5 +1,11 @@
+import type { Session } from '@deepseek-ai/dsh-session'
 import type { DshSessionEvent } from './ingest.js'
-import type { ControlPlaneManager, ControlResult } from './control.js'
+import {
+  createDshReceiptSink,
+  type ControlPlaneManager,
+  type ControlReceiptSink,
+  type ControlResult,
+} from './control.js'
 
 export interface AcpMessage {
   jsonrpc?: string
@@ -140,10 +146,17 @@ export class AcpSessionMirror {
   private seq = 0
   private readonly events: DshSessionEvent[] = []
 
+  private readonly receiptSink: ControlReceiptSink | undefined
+
   constructor(
     private readonly defaultSessionId: string = 'acp-session',
     private readonly controlManager?: ControlPlaneManager,
-  ) {}
+    dshSession?: Session,
+  ) {
+    // Canonical receipt path: Session.append is the sole writer. Give the sink
+    // to exactly one of (manager, mirror) for a session or receipts double.
+    this.receiptSink = dshSession === undefined ? undefined : createDshReceiptSink(dshSession)
+  }
 
   getMirroredEvents(): readonly DshSessionEvent[] {
     return this.events
@@ -188,6 +201,10 @@ export class AcpSessionMirror {
         data: { ...abortRes.auditEvent },
       }
       this.events.push(event)
+
+      // Exactly one canonical receipt per mirrored actuation; an append
+      // rejection propagates (fail-closed — no receipt, no success claim).
+      await this.receiptSink?.(abortRes.auditEvent)
 
       return { event, controlResult }
     }
