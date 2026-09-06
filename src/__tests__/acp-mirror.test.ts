@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import { Session, type SessionId } from '@deepseek-ai/dsh-session'
 import { ControlPlaneManager } from '../control.js'
 import { AcpSessionMirror, mirrorAcpMessageToDsh, type AcpMessage } from '../acp-mirror.js'
 
@@ -124,5 +125,43 @@ describe('S5: ACP Message Mirroring into Canonical DSH SessionEvents', () => {
     expect((failed.event?.data as { outcome?: string }).outcome).toBe('failed')
     expect((failed.event?.data as { details?: { actuator?: string } }).details?.actuator)
       .toBe('AbortController')
+  })
+
+  it('lands exactly one canonical receipt per mirrored cancel, matching manager outcome', async () => {
+    const session = Session.create('sess-acp-mirror-001' as SessionId)
+    const controlManager = new ControlPlaneManager()
+    controlManager.registerSession('acp-live', new AbortController())
+    controlManager.registerSession('acp-bare', { meta: { bare: true } })
+    const mirror = new AcpSessionMirror('acp-live', controlManager, session)
+
+    const ok = await mirror.ingestMessage({
+      method: 'session/cancel',
+      params: { sessionId: 'acp-live', reason: 'stop' },
+    })
+    const noop = await mirror.ingestMessage({
+      method: 'session/cancel',
+      params: { sessionId: 'acp-live', reason: 'again' },
+    })
+    const failed = await mirror.ingestMessage({
+      method: 'session/cancel',
+      params: { sessionId: 'acp-bare', reason: 'no actuator' },
+    })
+
+    const results = [ok, noop, failed]
+    expect(results.map(r => r.controlResult?.auditEvent.outcome)).toEqual(['success', 'noop', 'failed'])
+
+    const receipts = session.events.filter(e => e.type === 'control/intervention')
+    expect(receipts).toHaveLength(3)
+    // Session is the sole sequence allocator.
+    expect(receipts.map(e => e.seq)).toEqual([0, 1, 2])
+    // Receipt outcome is the manager outcome — no fabricated success.
+    expect(receipts.map(e => (e.data as { outcome: string }).outcome))
+      .toEqual(results.map(r => r.controlResult?.auditEvent.outcome))
+    expect(receipts.map(e => (e.data as { verb: string }).verb)).toEqual(['abort', 'abort', 'abort'])
+    // Receipt and mirrored event carry the same audit payload.
+    for (const [i, r] of results.entries()) {
+      const { type: _type, ...receiptPayload } = r.controlResult!.auditEvent
+      expect(receipts[i]!.data).toEqual(receiptPayload)
+    }
   })
 })
