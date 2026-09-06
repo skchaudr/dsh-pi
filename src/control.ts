@@ -464,9 +464,10 @@ export class ControlPlaneManager {
       }
       await this.recordAudit(auditEvent)
       return {
-        ok: true,
+        ok: false,
         aborted: false,
         auditEvent,
+        error: 'Session not active',
       }
     }
 
