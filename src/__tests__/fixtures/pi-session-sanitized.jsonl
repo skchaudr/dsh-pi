@@ -1,0 +1,7 @@
+{"type":"session","version":3,"id":"sess-fixture-001","timestamp":"2026-01-05T10:00:00.000Z","cwd":"/tmp/dsh-fixture"}
+{"type":"session_info","id":"e01","parentId":null,"timestamp":"2026-01-05T10:00:00.100Z","name":"sanitized-fixture"}
+{"type":"message","id":"e02","parentId":"e01","timestamp":"2026-01-05T10:00:01.000Z","message":{"role":"user","content":"List the files in this example project.","timestamp":1767606001000}}
+{"type":"message","id":"e03","parentId":"e02","timestamp":"2026-01-05T10:00:02.000Z","message":{"role":"assistant","content":[{"type":"toolCall","id":"call-fixture-01","name":"bash","arguments":{"command":"ls /tmp/dsh-fixture"}}]}}
+{"type":"message","id":"e04","parentId":"e03","timestamp":"2026-01-05T10:00:03.000Z","message":{"role":"toolResult","toolCallId":"call-fixture-01","toolName":"bash","isError":false,"content":[{"type":"text","text":"README.md\nsrc"}]}}
+{"type":"subagent_spawn","dispatchCallId":"dispatch-fixture-01","subagentName":"example-worker","task":"Summarize the example README","childTools":[{"callId":"child-fixture-01","parentId":"dispatch-fixture-01","name":"read","arguments":{"path":"/tmp/dsh-fixture/README.md"},"result":{"content":[{"type":"text","text":"# Example"}]}}],"result":{"content":[{"type":"text","text":"The README is a minimal example."}]}}
+{"type":"agent_end","status":"completed","timestamp":"2026-01-05T10:00:04.000Z"}
