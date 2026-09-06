@@ -1,6 +1,11 @@
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import { Session, type SessionEvent, type SessionId } from '@deepseek-ai/dsh-session'
 import {
   ControlPlaneManager,
+  createDshReceiptSink,
   type AbortControlRequest,
   type AnnotateControlRequest,
   type ReassignControlRequest,
@@ -330,6 +335,139 @@ describe('S4: Full 5-Verb Control Plane Backend', () => {
       await manager.abort({ targetSessionId: 'session_sink', operator: 'sab', reason: 'again' })
 
       expect(receipts).toEqual(['annotate:success', 'abort:success', 'abort:noop'])
+    })
+
+    it('reports failure, never success, when an actuator throws', async () => {
+      const manager = new ControlPlaneManager()
+      const controller = new AbortController()
+      manager.registerSession('session_throwing', {
+        controller,
+        onAnnotate: vi.fn().mockRejectedValue(new Error('annotate backend down')),
+        onSteer: vi.fn().mockRejectedValue(new Error('steer channel closed')),
+        onReassign: vi.fn().mockRejectedValue(new Error('provider rejected model')),
+        onRespawn: vi.fn().mockRejectedValue(new Error('respawn budget exhausted')),
+      })
+
+      const annotate = await manager.annotate({ targetSessionId: 'session_throwing', annotation: 'x', operator: 'sab' })
+      expect(annotate.ok).toBe(false)
+      expect(annotate.auditEvent.outcome).toBe('failed')
+      expect(annotate.error).toBe('annotate backend down')
+
+      const steer = await manager.steer({ targetSessionId: 'session_throwing', prompt: 'x', operator: 'sab' })
+      expect(steer.ok).toBe(false)
+      expect(steer.auditEvent.outcome).toBe('failed')
+      expect(steer.error).toBe('steer channel closed')
+
+      const reassign = await manager.reassign({ targetSessionId: 'session_throwing', model: 'm', operator: 'sab' })
+      expect(reassign.ok).toBe(false)
+      expect(reassign.auditEvent.outcome).toBe('failed')
+      expect(reassign.error).toBe('provider rejected model')
+
+      const respawn = await manager.respawn({ targetSessionId: 'session_throwing', operator: 'sab' })
+      expect(respawn.ok).toBe(false)
+      expect(respawn.auditEvent.outcome).toBe('failed')
+      expect(respawn.error).toBe('respawn budget exhausted')
+
+      const history = manager.getAuditHistory('session_throwing')
+      expect(history).toHaveLength(4)
+      expect(history.every(h => h.outcome === 'failed')).toBe(true)
+    })
+
+    it('never reports success when the receipt sink itself fails', async () => {
+      const manager = new ControlPlaneManager({
+        receiptSink: () => { throw new Error('receipt store full') },
+      })
+      manager.registerSession('session_sink_fail', { onAnnotate: vi.fn() })
+
+      await expect(
+        manager.annotate({ targetSessionId: 'session_sink_fail', annotation: 'x', operator: 'sab' }),
+      ).rejects.toThrow('receipt store full')
+    })
+  })
+
+  describe('canonical DSH receipt sink', () => {
+    it('appends exactly one receipt per control action with session-allocated seq', async () => {
+      const session = Session.create('sess-control-001' as SessionId)
+      const manager = new ControlPlaneManager({ receiptSink: createDshReceiptSink(session) })
+      const controller = new AbortController()
+      manager.registerSession('session_sink_dsh', {
+        controller,
+        onAnnotate: vi.fn(),
+        meta: { agent: 'worker-1' },
+      })
+
+      await manager.annotate({
+        targetSessionId: 'session_sink_dsh',
+        annotation: 'flagged',
+        operator: 'sab',
+        timestamp: '2026-09-01T15:30:00.000Z',
+      })
+      await manager.abort({ targetSessionId: 'session_sink_dsh', operator: 'sab', reason: 'done' })
+      await manager.abort({ targetSessionId: 'session_sink_dsh', operator: 'sab', reason: 'redundant' })
+      await manager.steer({ targetSessionId: 'missing_session', prompt: 'x', operator: 'sab' })
+
+      const receipts = session.events.filter(e => e.type === 'control/intervention')
+      expect(receipts).toHaveLength(4)
+      expect(receipts.map(e => e.seq)).toEqual([0, 1, 2, 3])
+      expect(receipts.map(e => (e.data as any).outcome)).toEqual(['success', 'success', 'noop', 'noop'])
+      expect(receipts.map(e => (e.data as any).verb)).toEqual(['annotate', 'abort', 'abort', 'steer'])
+      // Session is the sole writer: manager audit history and DSH log agree 1:1.
+      expect(manager.getAuditHistory()).toHaveLength(receipts.length)
+      // The operator timestamp is a source position, not session time.
+      expect((receipts[0]!.data as any).timestamp).toBe('2026-09-01T15:30:00.000Z')
+    })
+
+    it('replays receipts end-to-end: append, flush to JSONL, reload from temp root', async () => {
+      const session = Session.create('sess-control-002' as SessionId)
+      const manager = new ControlPlaneManager({ receiptSink: createDshReceiptSink(session) })
+      const controller = new AbortController()
+      manager.registerSession('session_replay', {
+        controller,
+        onSteer: vi.fn(),
+        meta: { model: 'grok-4.6' },
+      })
+
+      await manager.steer({
+        targetSessionId: 'session_replay',
+        prompt: 'use ripgrep',
+        operator: 'sab',
+        timestamp: '2026-09-01T15:40:00.000Z',
+      })
+      await manager.abort({ targetSessionId: 'session_replay', operator: 'sab', reason: 'halt', checkpoint: true })
+      await manager.annotate({ targetSessionId: 'session_replay', annotation: 'post-halt note', operator: 'sab' })
+
+      // Flush: serialize the canonical log to a temp DSH root.
+      const root = mkdtempSync(join(tmpdir(), 'dsh-control-replay-'))
+      const logPath = join(root, 'sess-control-002.jsonl')
+      writeFileSync(logPath, session.events.map(e => JSON.stringify(e)).join('\n') + '\n')
+
+      // Reload: parse the flushed log and replay it through Session seeding.
+      const seed = readFileSync(logPath, 'utf8')
+        .split('\n')
+        .filter(line => line.length > 0)
+        .map(line => JSON.parse(line) as SessionEvent)
+      expect(seed).toHaveLength(3)
+
+      const replayed = Session.create('sess-control-002' as SessionId, seed)
+      const replayedReceipts = replayed.events.filter(e => e.type === 'control/intervention')
+      expect(replayedReceipts.map(e => e.data)).toEqual(
+        session.events.filter(e => e.type === 'control/intervention').map(e => e.data),
+      )
+      // Replay lifecycle appends its trailing seed-boundary marker on top.
+      expect(replayed.events.map(e => e.type)).toEqual([
+        ...session.events.map(e => e.type),
+        'session/end-seed',
+      ])
+      expect(replayed.events.map(e => e.seq)).toEqual(replayed.events.map((_, i) => i))
+      // A failed receipt (actuator missing on the aborted-but-registered
+      // session) round-trips byte-identical: replay preserves audit truth.
+      expect((replayedReceipts[2]!.data as any).outcome).toBe('failed')
+      expect((replayedReceipts[2]!.data as any).details).toEqual({
+        annotation: 'post-halt note',
+        sessionMeta: { model: 'grok-4.6' },
+        note: 'actuator_missing',
+        actuator: 'onAnnotate',
+      })
     })
   })
 
