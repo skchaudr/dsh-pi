@@ -11,6 +11,11 @@ import type { ExtensionEvent, ResolvedCommand } from '@earendil-works/pi-coding-
 import { createDshToolDefinition, piContentToDsh } from './dsh-adapter.js'
 import { resolveExtensionEntries } from './resolver.js'
 import { PiExtensionRuntime } from './runtime.js'
+import {
+  ControlPlaneManager,
+  createDshReceiptSink,
+  type SessionControlHandle,
+} from './control.js'
 
 export { inventoryWorkspace } from './compatibility.js'
 export {
@@ -63,6 +68,46 @@ interface MountedRuntime {
 }
 
 type PiContent = { type: 'text'; text: string } | { type: 'image'; data: string; mimeType: string }
+
+const liveControls = new WeakMap<Agent, ControlPlaneManager>()
+
+/** Control plane attached at DSH agent session start, if the agent mounted. */
+export function liveControlPlane(agent: Agent): ControlPlaneManager | undefined {
+  return liveControls.get(agent)
+}
+
+function liveAgentControlHandle(agent: Agent): SessionControlHandle {
+  const controller = new AbortController()
+  controller.signal.addEventListener('abort', () => {
+    agent.cancel({ kind: 'hook', reason: 'Control plane abort' })
+  })
+  return {
+    controller,
+    meta: {
+      ...(agent.options.provider === undefined ? {} : { provider: agent.options.provider }),
+      ...(agent.options.model === undefined ? {} : { model: agent.options.model }),
+    },
+    onAnnotate: () => {},
+    onSteer: (req) => {
+      agent.steer(createUserMessage({
+        content: [{ type: 'text', text: req.prompt }],
+        source: { kind: 'plugin', plugin: name },
+      }))
+    },
+    onReassign: (req) => {
+      if (req.provider !== undefined) agent.options.provider = req.provider
+      if (req.model !== undefined) agent.options.model = req.model
+    },
+  }
+}
+
+function attachAgentControl(agent: Agent): void {
+  const session = agent.session
+  const sink = typeof session.append === 'function' ? createDshReceiptSink(session) : undefined
+  const manager = new ControlPlaneManager(sink === undefined ? undefined : { receiptSink: sink })
+  manager.registerSession(String(agent.id), liveAgentControlHandle(agent))
+  liveControls.set(agent, manager)
+}
 
 function sourceReason(source: SessionStartSource): 'startup' | 'resume' | 'new' | 'reload' {
   if (source === 'resume') return 'resume'
@@ -445,7 +490,9 @@ export function apply(ctx: Context, config: Config): void {
       return existing
     }
     const pending = mountAgent(ctx, agent, config, reason).then((mounted) => {
+      if (!runtimes.has(agent)) return mounted
       ready.add(agent)
+      attachAgentControl(agent)
       return mounted
     })
     runtimes.set(agent, pending)
@@ -562,6 +609,11 @@ export function apply(ctx: Context, config: Config): void {
     }
   })
   ctx.on('agent/disposed', ({ agent }) => {
+    const control = liveControls.get(agent)
+    if (control !== undefined) {
+      control.unregisterSession(String(agent.id))
+      liveControls.delete(agent)
+    }
     const pending = runtimes.get(agent)
     runtimes.delete(agent)
     sessions.delete(agent.session)
