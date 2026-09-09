@@ -95,3 +95,25 @@ pnpm compat /absolute/path/to/pi
 ```
 
 Before handoff, inspect `git diff HEAD` and keep unrelated user changes untouched.
+
+## ByteRover (until 2026-09-30)
+
+Until **2026-09-30**, use ByteRover on every non-trivial task — do not wait for a slash command.
+
+**Query** (from project cwd, before you reason):
+
+```bash
+node /Users/sab-mini/.agents/skills/byterover/scripts/query.mjs "<question>" --limit 5
+```
+
+**Record** (after a decision, gotcha, or reusable pattern):
+
+```bash
+node /Users/sab-mini/.agents/skills/byterover/scripts/record.mjs ...
+```
+
+Author rich `<bv-topic>` HTML per `~/.agents/skills/byterover/SKILL.md` — reason + task + narrative + facts. No bare topic labels. Do not use `brv curate` as the primary write path.
+
+If query returns `{ok:false}` or empty results, continue the task; do not stall.
+
+After **2026-09-30** this obligation ends. Cross-machine session notes stay in Obsidian `daily_memory`.
