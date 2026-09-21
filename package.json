@@ -83,6 +83,7 @@
     "@deepseek-ai/dsh-system-prompt": "0.1.5-rc.2",
     "@deepseek-ai/dsh-tools": "0.1.5-rc.2",
     "@types/node": "^24.10.0",
+    "pi-warden": "^0.36.0",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^4.0.18"
