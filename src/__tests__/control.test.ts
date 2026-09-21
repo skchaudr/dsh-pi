@@ -406,7 +406,7 @@ describe('S4: Full 5-Verb Control Plane Backend', () => {
       await manager.abort({ targetSessionId: 'session_sink_dsh', operator: 'sab', reason: 'redundant' })
       await manager.steer({ targetSessionId: 'missing_session', prompt: 'x', operator: 'sab' })
 
-      const receipts = session.events.filter(e => e.type === 'control/intervention')
+      const receipts = session.snapshotEvents().filter(e => e.type === 'control/intervention')
       expect(receipts).toHaveLength(4)
       expect(receipts.map(e => e.seq)).toEqual([0, 1, 2, 3])
       expect(receipts.map(e => (e.data as any).outcome)).toEqual(['success', 'success', 'noop', 'noop'])
@@ -439,7 +439,7 @@ describe('S4: Full 5-Verb Control Plane Backend', () => {
       // Flush: serialize the canonical log to a temp DSH root.
       const root = mkdtempSync(join(tmpdir(), 'dsh-control-replay-'))
       const logPath = join(root, 'sess-control-002.jsonl')
-      writeFileSync(logPath, session.events.map(e => JSON.stringify(e)).join('\n') + '\n')
+      writeFileSync(logPath, session.snapshotEvents().map(e => JSON.stringify(e)).join('\n') + '\n')
 
       // Reload: parse the flushed log and replay it through Session seeding.
       const seed = readFileSync(logPath, 'utf8')
@@ -449,16 +449,16 @@ describe('S4: Full 5-Verb Control Plane Backend', () => {
       expect(seed).toHaveLength(3)
 
       const replayed = Session.create('sess-control-002' as SessionId, seed)
-      const replayedReceipts = replayed.events.filter(e => e.type === 'control/intervention')
+      const replayedReceipts = replayed.snapshotEvents().filter(e => e.type === 'control/intervention')
       expect(replayedReceipts.map(e => e.data)).toEqual(
-        session.events.filter(e => e.type === 'control/intervention').map(e => e.data),
+        session.snapshotEvents().filter(e => e.type === 'control/intervention').map(e => e.data),
       )
       // Replay lifecycle appends its trailing seed-boundary marker on top.
-      expect(replayed.events.map(e => e.type)).toEqual([
-        ...session.events.map(e => e.type),
+      expect(replayed.snapshotEvents().map(e => e.type)).toEqual([
+        ...session.snapshotEvents().map(e => e.type),
         'session/end-seed',
       ])
-      expect(replayed.events.map(e => e.seq)).toEqual(replayed.events.map((_, i) => i))
+      expect(replayed.snapshotEvents().map(e => e.seq)).toEqual(replayed.snapshotEvents().map((_, i) => i))
       // A failed receipt (actuator missing on the aborted-but-registered
       // session) round-trips byte-identical: replay preserves audit truth.
       expect((replayedReceipts[2]!.data as any).outcome).toBe('failed')

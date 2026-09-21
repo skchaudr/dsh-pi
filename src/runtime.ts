@@ -208,6 +208,7 @@ function bindActions(
     actions,
     context: {
       getModel: () => undefined,
+      getScopedModels: () => [],
       isIdle: () => bridge.isIdle?.() ?? true,
       isProjectTrusted: () => options.projectTrusted ?? false,
       getSignal: () => state.signalStore.getStore(),
@@ -340,13 +341,23 @@ export class PiExtensionRuntime {
       return await this.load.state.signalStore.run(signal, async () => {
         if (event.type === 'tool_call') return this.load.runner.emitToolCall(event)
         if (event.type === 'tool_result') return this.load.runner.emitToolResult(event)
-        if (event.type === 'context') return this.load.runner.emitContext(event.messages)
+        if (event.type === 'context' || event.type === 'context_with_system') return this.load.runner.emitContext(event.messages)
         if (event.type === 'before_provider_request') return this.load.runner.emitBeforeProviderRequest(event.payload)
         if (event.type === 'before_provider_headers') return this.load.runner.emitBeforeProviderHeaders(event.headers)
         if (event.type === 'before_agent_start') {
-          return this.load.runner.emitBeforeAgentStart(event.prompt, event.images, event.systemPrompt, event.systemPromptOptions)
+          return this.load.runner.emitBeforeAgentStart(event.prompt, event.images, event.systemPromptOptions)
         }
         if (event.type === 'message_end') return this.load.runner.emitMessageEnd(event)
+        if (event.type === 'cache_warming_decision') return this.load.runner.emitCacheWarmingDecision(event)
+        if (event.type === 'turn_end' || event.type === 'agent_before_settle') {
+          return this.load.runner.emitBoundary(event, async () => ({
+            contextEntries: [],
+            contextMessages: [],
+            llmMessages: [],
+            pendingMessages: [],
+            canContinue: false,
+          }))
+        }
         if (event.type === 'user_bash') return this.load.runner.emitUserBash(event)
         if (event.type === 'input') {
           return this.load.runner.emitInput(event.text, event.images, event.source, event.streamingBehavior)

@@ -1,4 +1,4 @@
-import type { Session, SessionEvent, SessionEventMap, SurfaceIntent } from '@deepseek-ai/dsh-session'
+import type { Session, SessionEvent, SessionEventMap, SessionSeq, SurfaceIntent } from '@deepseek-ai/dsh-session'
 import type { DshSessionEvent } from './ingest.js'
 import { assertVocabularyKnown } from './vocabulary.js'
 
@@ -12,7 +12,7 @@ import { assertVocabularyKnown } from './vocabulary.js'
 export function appendPiEvents(session: Session, events: readonly DshSessionEvent[]): SessionEvent[] {
   assertVocabularyKnown()
   const appended: SessionEvent[] = []
-  const toolCallSeqs = new Map<string, number>()
+  const toolCallSeqs = new Map<string, SessionSeq>()
 
   for (const event of events) {
     switch (event.type) {

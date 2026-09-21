@@ -549,7 +549,17 @@ export function apply(ctx: Context, config: Config): void {
       await mounted.runtime.emit({
         type: 'before_agent_start', prompt, systemPrompt: '',
         ...(images.length === 0 ? {} : { images }),
-        systemPromptOptions: { cwd: agent.session.header.cwd ?? process.cwd() },
+        systemPromptOptions: {
+          cwd: agent.session.header.cwd ?? process.cwd(),
+          selectedTools: [],
+          toolSnippets: {},
+          toolGuidelines: {},
+          promptGuidelines: [],
+          appendSystemPrompt: '',
+          sections: {},
+          contextFiles: [],
+          skills: [],
+        },
       }, signal)
       mounted.lastTurn = turn
       await mounted.runtime.emit({ type: 'agent_start' }, signal)

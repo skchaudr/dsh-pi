@@ -1,6 +1,6 @@
 import { createToolResultMessage, createUserMessage } from '@deepseek-ai/dsh-llm/message'
-import type { CallId, ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm'
-import type { JsonValue } from '@deepseek-ai/dsh-session'
+import type { ContentBlock, ToolCallId, UserMessage } from '@deepseek-ai/dsh-llm'
+import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import {
   foldSubagentRunToToolCallBlock,
   type PiChildToolEvent,
@@ -251,7 +251,7 @@ export function translatePiEvent(
       for (const item of contentList) {
         if (item.type === 'toolCall') {
           const toolCall = item as PiToolCallItem
-          const callId = toolCall.id as CallId
+          const callId = toolCall.id as ToolCallId
           const argsStr = typeof toolCall.arguments === 'string'
             ? toolCall.arguments
             : JSON.stringify(toolCall.arguments ?? {})
@@ -292,7 +292,7 @@ export function translatePiEvent(
           .join('\n')
 
       const toolMessage = createToolResultMessage({
-        callId: toolResult.message.toolCallId as CallId,
+        callId: toolResult.message.toolCallId as ToolCallId,
         content: [{ type: 'text', text: textContent }],
         isError: !!toolResult.message.isError,
       })

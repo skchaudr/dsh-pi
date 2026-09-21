@@ -150,7 +150,7 @@ describe('S5: ACP Message Mirroring into Canonical DSH SessionEvents', () => {
     const results = [ok, noop, failed]
     expect(results.map(r => r.controlResult?.auditEvent.outcome)).toEqual(['success', 'noop', 'failed'])
 
-    const receipts = session.events.filter(e => e.type === 'control/intervention')
+    const receipts = session.snapshotEvents().filter(e => e.type === 'control/intervention')
     expect(receipts).toHaveLength(3)
     // Session is the sole sequence allocator.
     expect(receipts.map(e => e.seq)).toEqual([0, 1, 2])

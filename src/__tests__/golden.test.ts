@@ -20,9 +20,17 @@ describe('Golden Fixture Producer Guard', () => {
   it('generates the authentic DSH session stream from real Pi raw events and matches golden fixture', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-03-01T12:00:00.000Z'))
+    // dsh-util-crypto mints v4 UUIDs from getRandomValues, not crypto.randomUUID.
+    // Zero-filled bytes with a counter in byte 15 yield the same deterministic ids
+    // the pinned golden fixture was produced with (00000000-0000-4000-8000-000000000001).
     let uuidCounter = 1
-    vi.spyOn(globalThis.crypto, 'randomUUID').mockImplementation(
-      () => `00000000-0000-4000-8000-${String(uuidCounter++).padStart(12, '0')}`,
+    vi.spyOn(globalThis.crypto, 'getRandomValues').mockImplementation(
+      <T extends ArrayBufferView>(array: T): T => {
+        const bytes = array as unknown as Uint8Array
+        bytes.fill(0)
+        if (bytes.length === 16) bytes[15] = uuidCounter++
+        return array
+      },
     )
 
     const rawJsonl = readFileSync(rawFixturePath, 'utf8')
@@ -41,7 +49,7 @@ describe('Golden Fixture Producer Guard', () => {
       details: { note: 'verified fail-closed receipt' },
     })
 
-    const serializedLines = session.events.map(ev => JSON.stringify(ev) + '\n')
+    const serializedLines = session.snapshotEvents().map(ev => JSON.stringify(ev) + '\n')
     const fullContent = serializedLines.join('')
 
     if (process.env['REGEN'] === '1') {

@@ -251,9 +251,9 @@ describe('W02A: authentic Pi lineage through append and trajectory fold', () => 
 
     expect(appended.map(event => event.seq)).toEqual(appended.map((_, index) => index))
     expect(appended.every((event, index) => event.seq !== translated[index]!.seq)).toBe(true)
-    expect(session.events).toHaveLength(appended.length)
-    expect(session.events.map(event => event.seq)).toEqual(appended.map(event => event.seq))
-    expect(session.events.map(event => event.type)).toEqual(appended.map(event => event.type))
+    expect(session.snapshotEvents()).toHaveLength(appended.length)
+    expect(session.snapshotEvents().map(event => event.seq)).toEqual(appended.map(event => event.seq))
+    expect(session.snapshotEvents().map(event => event.type)).toEqual(appended.map(event => event.type))
   })
 
   it('persists turn/step structure around the parent dispatch and both child descriptors', () => {
@@ -291,7 +291,7 @@ describe('W02A: authentic Pi lineage through append and trajectory fold', () => 
     const session = Session.create('sess-lineage-001' as SessionId)
     appendPiEvents(session, parsePiJsonlStream(lineageJsonl))
 
-    const descriptors = session.events
+    const descriptors = session.snapshotEvents()
       .filter(event => event.type === 'subagent/descriptor')
       .map(event => event.data as DescriptorData)
 
@@ -319,7 +319,7 @@ describe('W02A: authentic Pi lineage through append and trajectory fold', () => 
     expect(workerB.subCalls[0]?.callId).toBe('child-b-read')
     expect(workerB.result?.content[0]?.text).toBe('Worker B audit clean')
 
-    const fleet = recoverFleetFromPersisted(session.events)
+    const fleet = recoverFleetFromPersisted(session.snapshotEvents())
     expect(fleet).toHaveLength(1)
     expect(fleet[0]?.callId).toBe('call-parent-fanout')
     expect(fleet[0]?.name).toBe('subagent_fanout')
@@ -334,15 +334,15 @@ describe('W02A: authentic Pi lineage through append and trajectory fold', () => 
     const session = Session.create('sess-lineage-001' as SessionId)
     appendPiEvents(session, parsePiJsonlStream(lineageJsonl))
 
-    const replayed = Session.create('sess-lineage-001' as SessionId, session.events)
-    expect(replayed.events.map(event => event.type)).toEqual([
-      ...session.events.map(event => event.type),
+    const replayed = Session.create('sess-lineage-001' as SessionId, session.snapshotEvents())
+    expect(replayed.snapshotEvents().map(event => event.type)).toEqual([
+      ...session.snapshotEvents().map(event => event.type),
       'session/end-seed',
     ])
     expect(
-      replayed.events.filter(event => event.type === 'subagent/descriptor'),
+      replayed.snapshotEvents().filter(event => event.type === 'subagent/descriptor'),
     ).toHaveLength(2)
-    expect(recoverFleetFromPersisted(replayed.events)[0]?.subCalls.map(child => child.callId))
+    expect(recoverFleetFromPersisted(replayed.snapshotEvents())[0]?.subCalls.map(child => child.callId))
       .toEqual(['dispatch-worker-a', 'dispatch-worker-b'])
   })
 })

@@ -42,8 +42,8 @@ describe('W01A: append adapter over the DSH event vocabulary', () => {
       'turn/end',
     ])
     // Session is the sole writer: log and return carry the same events.
-    expect(session.events).toHaveLength(appended.length)
-    expect(session.events.map(e => e.seq)).toEqual(appended.map(e => e.seq))
+    expect(session.snapshotEvents()).toHaveLength(appended.length)
+    expect(session.snapshotEvents().map(e => e.seq)).toEqual(appended.map(e => e.seq))
   })
 
   it('carries the required SurfaceIntent on surface events and none on log-only events', () => {
@@ -74,14 +74,14 @@ describe('W01A: append adapter over the DSH event vocabulary', () => {
     const session = Session.create('sess-fixture-001' as SessionId)
     appendPiEvents(session, parsePiJsonlStream(fixtureJsonl))
 
-    const descriptor = session.events.find(e => e.type === 'subagent/descriptor')!
+    const descriptor = session.snapshotEvents().find(e => e.type === 'subagent/descriptor')!
     expect((descriptor.data as any).block.subCalls[0].name).toBe('read')
 
     // Reconstruction from the flat log: seed validation and the surface fold
     // accept every event; derived messages match the live session. The replay
     // lifecycle appends its own trailing seed-boundary marker on top.
-    const replayed = Session.create('sess-fixture-001' as SessionId, session.events)
-    expect(replayed.events.map(e => e.type)).toEqual([...session.events.map(e => e.type), 'session/end-seed'])
+    const replayed = Session.create('sess-fixture-001' as SessionId, session.snapshotEvents())
+    expect(replayed.snapshotEvents().map(e => e.type)).toEqual([...session.snapshotEvents().map(e => e.type), 'session/end-seed'])
     expect([...replayed.surface.nodes]).toEqual([...session.surface.nodes])
     expect(replayed.deriveMessages()).toEqual(session.deriveMessages())
   })
@@ -90,6 +90,6 @@ describe('W01A: append adapter over the DSH event vocabulary', () => {
     const session = Session.create('sess-fixture-001' as SessionId)
     const foreign = [{ seq: 0, time: 1, type: 'control/intervention', data: {} }] as const
     expect(() => appendPiEvents(session, foreign as unknown as any[])).toThrow(/unsupported translated event type/)
-    expect(session.events).toHaveLength(0)
+    expect(session.snapshotEvents()).toHaveLength(0)
   })
 })

@@ -122,7 +122,7 @@ describe('Track B: live DSH lifecycle control receipts', () => {
     expect(aborted.aborted).toBe(true)
     expect(harness.agent.cancel).toHaveBeenCalledWith({ kind: 'hook', reason: 'Control plane abort' })
 
-    const receipts = harness.session.events.filter(e => e.type === 'control/intervention')
+    const receipts = harness.session.snapshotEvents().filter(e => e.type === 'control/intervention')
     expect(receipts).toHaveLength(3)
     expect(receipts.map(e => e.seq)).toEqual([0, 1, 2])
     expect(receipts.map(e => (e.data as { verb: string }).verb)).toEqual(['steer', 'reassign', 'abort'])
@@ -149,17 +149,17 @@ describe('Track B: live DSH lifecycle control receipts', () => {
 
     const root = mkdtempSync(join(tmpdir(), 'dsh-live-control-'))
     const logPath = join(root, `${String(harness.session.id)}.jsonl`)
-    writeFileSync(logPath, harness.session.events.map(e => JSON.stringify(e)).join('\n') + '\n')
+    writeFileSync(logPath, harness.session.snapshotEvents().map(e => JSON.stringify(e)).join('\n') + '\n')
 
     const seed = readFileSync(logPath, 'utf8')
       .split('\n')
       .filter(line => line.length > 0)
       .map(line => JSON.parse(line) as SessionEvent)
     const replayed = Session.create(harness.session.id, seed)
-    const liveReceipts = harness.session.events.filter(e => e.type === 'control/intervention')
-    const replayedReceipts = replayed.events.filter(e => e.type === 'control/intervention')
+    const liveReceipts = harness.session.snapshotEvents().filter(e => e.type === 'control/intervention')
+    const replayedReceipts = replayed.snapshotEvents().filter(e => e.type === 'control/intervention')
     expect(replayedReceipts.map(e => e.data)).toEqual(liveReceipts.map(e => e.data))
-    expect(replayed.events.map(e => e.type)).toEqual([...harness.session.events.map(e => e.type), 'session/end-seed'])
+    expect(replayed.snapshotEvents().map(e => e.type)).toEqual([...harness.session.snapshotEvents().map(e => e.type), 'session/end-seed'])
     expect((replayedReceipts[0]!.data as { timestamp: string }).timestamp).toBe('2026-09-06T01:10:00.000Z')
 
     await harness.dispose()
@@ -180,7 +180,7 @@ describe('Track B: live DSH lifecycle control receipts', () => {
     expect(steered.auditEvent.outcome).toBe('failed')
     expect(steered.error).toBe('steer channel closed')
 
-    const failedReceipts = harness.session.events.filter(e => e.type === 'control/intervention')
+    const failedReceipts = harness.session.snapshotEvents().filter(e => e.type === 'control/intervention')
     expect(failedReceipts).toHaveLength(1)
     expect((failedReceipts[0]!.data as { outcome: string }).outcome).toBe('failed')
 
@@ -204,7 +204,7 @@ describe('Track B: live DSH lifecycle control receipts', () => {
     })).rejects.toThrow('append rejected')
     expect(append).toHaveBeenCalledOnce()
     append.mockRestore()
-    expect(session.events.filter(e => e.type === 'control/intervention')).toHaveLength(0)
+    expect(session.snapshotEvents().filter(e => e.type === 'control/intervention')).toHaveLength(0)
   })
 
   it('does not duplicate receipts when ACP cancel uses the manager-owned sink', async () => {
@@ -218,7 +218,7 @@ describe('Track B: live DSH lifecycle control receipts', () => {
       params: { sessionId: 'agent-1', reason: 'client cancel' },
     })
     expect(cancel.controlResult?.ok).toBe(true)
-    const receipts = harness.session.events.filter(e => e.type === 'control/intervention')
+    const receipts = harness.session.snapshotEvents().filter(e => e.type === 'control/intervention')
     expect(receipts).toHaveLength(1)
     expect((receipts[0]!.data as { verb: string }).verb).toBe('abort')
     expect(harness.agent.cancel).toHaveBeenCalledOnce()
