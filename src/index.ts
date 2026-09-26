@@ -7,6 +7,7 @@ import type { CommandInvocation } from '@deepseek-ai/dsh-commands'
 import { createUserMessage } from '@deepseek-ai/dsh-llm/message'
 import type { ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session'
+import type { PreToolDecision, ToolExecution } from '@deepseek-ai/dsh-tools'
 import type { ExtensionEvent, ResolvedCommand } from '@earendil-works/pi-coding-agent'
 import { createDshToolDefinition, piContentToDsh } from './dsh-adapter.js'
 import { resolveExtensionEntries } from './resolver.js'
@@ -574,6 +575,27 @@ export function apply(ctx: Context, config: Config): void {
     await mounted.runtime.emit({ type: 'turn_start', turnIndex: piTurnIndex, timestamp: Date.now() }, signal)
     await mounted.drainDeliveries()
     return { kind: 'enter', messages: entered }
+  })
+  ctx.on('tools/pre-execute', async (exec: ToolExecution, next): Promise<PreToolDecision> => {
+    if (!exec.agent) return next()
+    const mounted = await ensure(exec.agent)
+    const activePiTools = new Set(mounted.runtime.tools().map(t => t.name))
+    if (activePiTools.has(exec.name)) return next()
+    const input = (typeof exec.arguments === 'object' && exec.arguments !== null ? exec.arguments : {}) as Record<string, unknown>
+    try {
+      const decision = await mounted.runtime.emit({
+        type: 'tool_call',
+        toolCallId: String(exec.callId),
+        toolName: exec.name,
+        input,
+      }, exec.signal) as { block?: boolean; reason?: string } | undefined
+      if (decision?.block === true) {
+        return { kind: 'deny', reason: decision.reason ?? `Pi extension blocked tool: ${exec.name}` }
+      }
+    } catch (error) {
+      if (exec.signal.aborted) throw error
+    }
+    return next()
   })
   ctx.on('session/event', async (session, event) => {
     if (event.type !== 'turn/end') return
