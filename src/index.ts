@@ -34,6 +34,13 @@ export * from './control.js'
 export * from './guardrails.js'
 export * from './acp-mirror.js'
 
+// DSH v4 requires the producer's own kind rather than the retired plugin wrapper.
+declare module '@deepseek-ai/dsh-llm' {
+  interface MessageSourceMap {
+    'dsh-pi': { kind: 'dsh-pi' }
+  }
+}
+
 export const name = 'dsh-pi'
 export const inject = ['agents', 'tools', 'commands', 'systemPrompt', 'attachments']
 
@@ -92,7 +99,7 @@ function liveAgentControlHandle(agent: Agent): SessionControlHandle {
     onSteer: (req) => {
       agent.steer(createUserMessage({
         content: [{ type: 'text', text: req.prompt }],
-        source: { kind: 'plugin', plugin: name },
+        source: { kind: name },
       }))
     },
     onReassign: (req) => {
@@ -287,14 +294,14 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
       sendUserMessage: (content, options) => {
         const delivery = options as { deliverAs?: 'steer' | 'followUp' } | undefined
         queueDelivery(content as string | PiContent[], blocks => {
-          deliverUserMessage(agent, createUserMessage({ content: blocks, source: { kind: 'plugin', plugin: name } }), delivery?.deliverAs)
+          deliverUserMessage(agent, createUserMessage({ content: blocks, source: { kind: name } }), delivery?.deliverAs)
         })
       },
       sendMessage: (message, options) => {
         const custom = message as { content: string | PiContent[] }
         const delivery = options as { triggerTurn?: boolean; deliverAs?: 'steer' | 'followUp' | 'nextTurn' } | undefined
         queueDelivery(custom.content, blocks => {
-          const user = createUserMessage({ content: blocks, source: { kind: 'plugin', plugin: name } })
+          const user = createUserMessage({ content: blocks, source: { kind: name } })
           deliverCustomMessage(agent, user, delivery)
         })
       },
@@ -535,7 +542,7 @@ export function apply(ctx: Context, config: Config): void {
           content: await piMessageContent(images.length === 0
             ? input.text
             : [{ type: 'text', text: input.text }, ...images], ctx.attachments),
-          source: { kind: 'plugin', plugin: name },
+          source: { kind: name },
         })
         const claimedIds = new Set(messages.map(message => message.id))
         let inserted = false

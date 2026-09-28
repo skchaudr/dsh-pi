@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from 'vitest'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
-import plugin, { apply, Config, inject } from '../index.js'
+import plugin, { apply, Config, inject, liveControlPlane } from '../index.js'
 
 const fixture = (name: string) => new URL(`./fixtures/${name}.ts`, import.meta.url).pathname
 
@@ -96,6 +96,43 @@ function createHarness(extension: string, options: { strict?: boolean } = {}) {
 }
 
 describe('dsh-pi plugin', () => {
+  it('uses producer-owned sources for custom, user, transformed, and control messages', async () => {
+    const harness = createHarness(fixture('message-sources'))
+    try {
+      const decision = await harness.enterStep() as { kind: 'enter'; messages: unknown[] }
+      const result = await liveControlPlane(harness.agent as never)!.steer({
+        targetSessionId: 'agent-1', prompt: 'control message', operator: 'test',
+      })
+      expect(result.ok).toBe(true)
+      expect(harness.agent.inject).toHaveBeenCalledOnce()
+      expect(harness.agent.followup).toHaveBeenCalledOnce()
+      expect(harness.agent.steer).toHaveBeenCalledOnce()
+      expect(decision.messages).toHaveLength(1)
+      const messages = [
+        harness.agent.inject.mock.calls[0]![0],
+        harness.agent.followup.mock.calls[0]![0],
+        decision.messages[0],
+        harness.agent.steer.mock.calls[0]![0],
+      ]
+
+      // Optional read-only integration against the deployed DSH catalog module.
+      const catalogPath = process.env['DSH_SESSION_FORMAT_CATALOG']
+      if (catalogPath) {
+        const { sessionFormatCatalog } = await import(/* @vite-ignore */ catalogPath)
+        for (const message of messages) {
+          expect(() => sessionFormatCatalog.encodeCurrentEvent({
+            type: 'user/message', seq: 1, time: 1, data: message, surfaceOp: 'append',
+          })).not.toThrow()
+        }
+      }
+      expect(messages).toEqual(['custom message', 'user message', 'HELLO', 'control message'].map(text => ({
+        id: expect.any(String), role: 'user', content: [{ type: 'text', text }],
+        source: { kind: 'dsh-pi' },
+      })))
+    } finally {
+      await harness.cleanup()
+    }
+  })
   it('keeps DSH dependency and config metadata on the default export', () => {
     expect(plugin).toBe(apply)
     expect(plugin.Config).toBe(Config)
