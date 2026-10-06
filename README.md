@@ -123,18 +123,18 @@ Status:
 |---|---|---:|---|
 | `pi.on(...)` | Cordis `ctx.on(...)` and DSH agent/session/tool events | 🟡 Partial | See the lifecycle-event table below. |
 | `pi.registerTool(...)` | `agent.ctx.tools.register(...)` | 🟡 Partial | Execution, strict schema projection (including disjoint TypeBox literal unions and numeric bounds; `$schema` draft markers are dropped), `prepareArguments`, cancellation, sanitized errors, ordered updates, images, concurrency, active-tool changes and lifecycle-time registration/replacement work. Successful text is bounded to 50KB/2000 lines, oversized details are omitted, and images are checked against DSH attachment limits before decoding. Unrepresentable schemas are rejected; Pi TUI renderers and DSH live update cards do not. |
-| `pi.registerCommand(...)` | `agent.ctx.commands.register(...)` | 🟡 Partial | Command handlers, sanitized unexpected failures, and `ctx.ui.notify` text work. Pi completions and interactive `ctx.ui` dialogs do not. |
+| `pi.registerCommand(...)` | `agent.ctx.commands.register(...)` | 🟡 Partial | Command handlers, sanitized unexpected failures, and `ctx.ui.notify` text (returned as the command result) work. Pi argument completions do not. Dialogs inside commands use the visible UI bridge when a decision path is composed. |
 | `pi.registerShortcut(...)` | No plugin-owned DSH keyboard-shortcut registry | ❌ Unsupported | Requires a separate client/UI plugin. |
 | `pi.registerFlag(...)` | DSH plugin config plus the embedded Pi flag store | ✅ Supported | Defaults and configured overrides use Pi's official runner. |
 | `pi.getFlag(...)` | Read the embedded Pi flag store | ✅ Supported | Preserves Pi flag lookup behavior. |
 | `pi.registerMessageRenderer(...)` | DSH replayable message projections/UI plugins | ❌ Unsupported | Pi TUI components cannot be replayed as DSH render intents. |
 | `pi.registerEntryRenderer(...)` | DSH session projections/UI plugins | ❌ Unsupported | Same renderer-model mismatch. |
-| `pi.sendMessage(...)` | `agent.followup()`, `agent.steer()`, `agent.inject()`, `agent.send()` | 🟡 Partial | Non-waking idle injection, trigger-turn, steering, follow-up and native next-turn delivery map. Attachment persistence is drained at lifecycle boundaries and delivery is suppressed after disposal begins; durable Pi custom entries, `display`, `customType` and renderer details do not map. |
+| `pi.sendMessage(...)` | `agent.followup()`, `agent.steer()`, `agent.inject()`, `agent.send()` | 🟡 Partial | Every custom entry is durably appended to the projected Pi session (with `display`, `customType`, and details) before delivery; workflow messages dedupe by `workflowMessageId` and duplicates are not re-enqueued. Non-waking idle injection, trigger-turn, steering, follow-up and native next-turn delivery map. Attachment persistence is drained at lifecycle boundaries and delivery is suppressed after disposal begins. |
 | `pi.sendUserMessage(...)` | `agent.followup()` / `agent.steer()` | ✅ Supported | Text and images map to identified DSH messages; images use DSH attachments. |
-| `pi.appendEntry(...)` | Declared custom `SessionEventMap` event plus `session.append()` | 🟡 Partial | Stored in the embedded Pi session only; not yet durable in the DSH log. |
-| `pi.setSessionName(...)` | DSH session-title domain/projection | 🟡 Partial | Updates Pi-side in-memory state only. |
-| `pi.getSessionName()` | Read DSH title projection | 🟡 Partial | Returns the Pi-side in-memory name. |
-| `pi.setLabel(...)` | Custom DSH session event/projection | 🟡 Partial | Stored in the embedded Pi session tree only. |
+| `pi.appendEntry(...)` | Embedded durable Pi session projection plus declared custom `SessionEventMap` events | 🟡 Partial | Stored in the projected Pi session (durable across restart); not yet written into the DSH event log. |
+| `pi.setSessionName(...)` | DSH session-title domain/projection | 🟡 Partial | Appends to the projected Pi session; the DSH title projection is not changed. |
+| `pi.getSessionName()` | Read DSH title projection | 🟡 Partial | Returns the Pi-side session name. |
+| `pi.setLabel(...)` | Custom DSH session event/projection | 🟡 Partial | Stored in the projected Pi session tree only. |
 | `pi.exec(...)` | DSH subprocess/shell services | ✅ Supported | Uses Pi's own process runner with cwd, env, timeout and cancellation options. |
 | `pi.getActiveTools()` | `ctx.tools.schemas(agent)` / scoped tool view | 🟡 Partial | Returns the filtered active set of adapted Pi tools; DSH-native tools are not included. |
 | `pi.getAllTools()` | `ctx.tools.get()` / `ctx.tools.schemas()` | 🟡 Partial | Returns Pi's official extension registry, not DSH-native tools. |
@@ -151,13 +151,13 @@ Status:
 
 | Pi context capability | Closest DSH capability | Implemented here | Notes |
 |---|---|---:|---|
-| `ctx.ui.*` | DSH command response and optional client UI plugins | 🟡 Partial | `/command` handlers capture `ctx.ui.notify` as response text. Dialogs and Pi TUI controls use Pi's no-op UI context. |
-| `ctx.mode` | Active host transport | 🟡 Partial | Reports the embedded Pi mode (`rpc` by default), not the connected DSH frontend. |
-| `ctx.hasUI` | Availability of dialog-capable UI | ✅ Supported | Correctly returns `false`; this host exposes no Pi dialogs. |
+| `ctx.ui.*` | Visible DSH publication plus `ctx.userQuestions` dialogs | 🟡 Partial | Text notifications, statuses, and widget clears publish visibly into the DSH session; select/confirm/input/editor await a real user answer when the question service is composed, and fail visibly otherwise. Command handlers still return captured `ctx.ui.notify` text. Terminal components, themes, and custom controls are unsupported. |
+| `ctx.mode` | Active host transport | 🟡 Partial | Reports the embedded Pi mode (`rpc` with a decision path, otherwise `print`), not the connected DSH frontend. |
+| `ctx.hasUI` | Availability of dialog-capable UI | ✅ Supported | Dynamically reflects whether a real DSH decision path is composed; text publication alone does not claim dialog capability. |
 | `ctx.cwd` | `agent.session.header.cwd` | ✅ Supported | Uses the DSH agent's working directory. |
-| `ctx.sessionManager` | DSH event-sourced session | 🟡 Partial | An in-memory Pi SessionManager is available, but DSH history is not projected into it. |
-| `ctx.modelRegistry` | DSH LLM adapter/catalog services | 🟡 Partial | Pi provider registrations are recorded; DSH adapters, credentials and model catalog are not exposed. |
-| `ctx.model` | Selected DSH provider/model | ❌ Unsupported | No Pi `Model` object is synthesized. |
+| `ctx.sessionManager` | DSH event-sourced session | 🟡 Partial | A durable Pi session projection is mounted per DSH session (`~/.dsh/pi-sessions/<id>`); native DSH turns are projected into its branch as text entries. Pi-side appends persist across restart; images and full model metadata are not projected. |
+| `ctx.modelRegistry` | DSH LLM adapter/catalog services | 🟡 Partial | `getAll`/`getAvailable`/`find`/`refresh` read a refreshed snapshot of the DSH model catalog (provider/id/name with conservative bounds). Credentials and auth status are not exposed; Pi `registerProvider` still records without creating a DSH adapter. |
+| `ctx.model` | Selected DSH provider/model | 🟡 Partial | The current DSH agent selection is projected as provider/id; full Pi `Model` metadata is not synthesized. |
 | `ctx.isIdle()` | `agent.status` | ✅ Supported | Reads the DSH agent's live status. |
 | `ctx.isProjectTrusted()` | `projectTrusted` config | ✅ Supported | Returns the explicit host trust decision. |
 | `ctx.signal` | DSH turn/tool `AbortSignal` | ✅ Supported | Invocation-scoped and safe for parallel Pi tools. |

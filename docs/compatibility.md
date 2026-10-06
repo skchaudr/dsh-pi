@@ -13,13 +13,13 @@ The executable source of truth is [`src/capabilities.ts`](../src/capabilities.ts
 | Area | Status | Notes |
 |---|---|---|
 | `registerTool` | partial | Execution, TypeBox validation, strict schema projection (including mutually exclusive literal unions and numeric bounds `minimum`/`maximum`/`exclusiveMinimum`/`minItems`; `$schema` draft markers are dropped), argument preparation, cancellation, sanitized errors, ordered updates, images, concurrency, active sets, and lifecycle-time registration/replacement. Successful text is bounded to 50KB/2000 lines, oversized details are omitted, and images are checked against DSH attachment limits before decoding. Overlapping unions, validation keywords outside DSH's enforced subset, and other unrepresentable schemas fail closed. Pi TUI renderers and DSH live update cards do not. |
-| `registerCommand` | partial | Handlers, sanitized unexpected failures, and `ctx.ui.notify` text map to DSH command responses. Pi completions and interactive dialogs do not. |
+| `registerCommand` | partial | Handlers, sanitized unexpected failures, and `ctx.ui.notify` text (returned as the command result) map to DSH command responses. Pi argument completions do not. Dialogs inside commands use the visible UI bridge when a decision path is composed. |
 | flags | supported | `registerFlag` / `getFlag` defaults plus configured overrides use Pi's store. |
 | active tools/catalog | partial | Active names are filtered and adapted Pi registrations reconcile into DSH. Catalog APIs expose Pi extension tools/commands only, not DSH-native tools, commands, skills, or templates. |
 | `sendUserMessage` | supported | Text/images become identified DSH plugin messages; images use the attachment service. |
-| `sendMessage` | partial | Non-waking idle injection, trigger-turn, follow-up, steering, and native next-turn delivery map. Attachment persistence is drained at lifecycle boundaries and delivery is suppressed after disposal begins; durable Pi custom entries, `display`, and custom renderer details do not map. |
+| `sendMessage` | partial | Every custom entry is durably appended to the projected Pi session (with `display`, `customType`, details) before delivery; workflow messages dedupe by `workflowMessageId` and duplicates are not re-enqueued. Non-waking idle injection, trigger-turn, follow-up, steering, and native next-turn delivery map. Attachment persistence is drained at lifecycle boundaries and delivery is suppressed after disposal begins. |
 | `exec` | supported | Uses Pi's own child-process implementation and options. |
-| `appendEntry`, session name, labels | partial | Available in the embedded in-memory Pi session; not written into DSH's durable event vocabulary. |
+| `appendEntry`, session name, labels | partial | Persisted in the projected durable Pi session; not written into DSH's durable event vocabulary. |
 | model selection | partial | Provider/model ids update DSH agent options, but only an installed DSH adapter makes that route real. |
 | thinking level | partial | Pi-side state only. |
 | provider registration | unsupported | A Pi `ProviderConfig` is not a DSH `LlmAdapter`; install/configure `@deepseek-ai/dsh-llm-pi-ai` instead. |
@@ -30,12 +30,12 @@ The executable source of truth is [`src/capabilities.ts`](../src/capabilities.ts
 
 | Area | Status | Notes |
 |---|---|---|
-| `ui` | partial | Command `notify` text maps; dialogs and Pi TUI controls use the no-op UI context. |
-| `mode` | partial | Reports the embedded Pi mode rather than a DSH client identity. |
-| `hasUI`, `cwd` | supported | Correctly reports no Pi dialog UI and uses the DSH agent working directory. |
-| `sessionManager` | partial | In-memory Pi state only; DSH durable history is not projected. |
-| `modelRegistry` | partial | Pi provider registrations are recorded, but DSH adapters, catalog, and auth are unavailable. |
-| `model` | unsupported | No selected Pi model object is synthesized. |
+| `ui` | partial | Text notifications, statuses, and widget clears publish visibly into the DSH session; select/confirm/input/editor await a real `ctx.userQuestions` answer when composed and fail visibly otherwise. Command handlers still return captured `notify` text. Terminal components, themes, and custom controls are unsupported. |
+| `mode` | partial | Reports the embedded Pi mode (`rpc` with a decision path, otherwise `print`) rather than a DSH client identity. |
+| `hasUI`, `cwd` | supported | `hasUI` dynamically reflects a real DSH decision path (text publication alone is not dialog capability); `cwd` uses the DSH agent working directory. |
+| `sessionManager` | partial | A durable Pi session projection is mounted per DSH session under `~/.dsh/pi-sessions/<id>`; native DSH turns are projected into the branch as text entries, and Pi-side appends persist across restart. Images and full model metadata are not projected. |
+| `modelRegistry` | partial | `getAll`/`getAvailable`/`find`/`refresh` read a refreshed snapshot of the DSH model catalog (provider/id/name with conservative bounds). Auth status and API keys are not exposed; Pi provider registration still records without creating a DSH adapter. |
+| `model` | partial | The current DSH agent selection is projected as provider/id; full Pi `Model` metadata is not synthesized. |
 | idle, wait-for-idle, trust, signal, abort, pending messages | supported | Mapped to DSH agent status/settlement, explicit trust config, invocation cancellation, and inbox state. |
 | `shutdown` | partial | Cancels the current DSH agent operation without exiting the process. |
 | context usage, compact, effective system prompt | unsupported | No faithful projection is wired. |

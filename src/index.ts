@@ -1,6 +1,10 @@
 import type { Context } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { Buffer } from 'node:buffer'
+import { randomUUID } from 'node:crypto'
+import { mkdir } from 'node:fs/promises'
+import { homedir } from 'node:os'
+import { join } from 'node:path'
 import type { Agent, PreStepDecision, SessionStartSource } from '@deepseek-ai/dsh-agent'
 import type { AttachmentStore } from '@deepseek-ai/dsh-attachment'
 import type { CommandInvocation } from '@deepseek-ai/dsh-commands'
@@ -8,8 +12,9 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm/message'
 import type { ContentBlock, UserMessage } from '@deepseek-ai/dsh-llm'
 import type { TurnEndReason } from '@deepseek-ai/dsh-session'
 import type { PreToolDecision, ToolExecution } from '@deepseek-ai/dsh-tools'
-import type { ExtensionEvent, ResolvedCommand } from '@earendil-works/pi-coding-agent'
+import { SessionManager, type ExtensionEvent, type ResolvedCommand } from '@earendil-works/pi-coding-agent'
 import { createDshToolDefinition, piContentToDsh } from './dsh-adapter.js'
+import type { UiDecisionRequest } from './ui-bridge.js'
 import { resolveExtensionEntries } from './resolver.js'
 import { PiExtensionRuntime } from './runtime.js'
 import {
@@ -42,7 +47,7 @@ declare module '@deepseek-ai/dsh-llm' {
 }
 
 export const name = 'dsh-pi'
-export const inject = ['agents', 'tools', 'commands', 'systemPrompt', 'attachments']
+export const inject = ['agents', 'tools', 'commands', 'systemPrompt', 'attachments', 'llm']
 
 export interface Config {
   /** Installed Pi package names, or local package/entry paths when allowLocalPaths is enabled. */
@@ -67,6 +72,7 @@ export const Config: z<Config> = z.object({
 
 interface MountedRuntime {
   runtime: PiExtensionRuntime
+  project(): void
   reconcile(): void
   drainDeliveries(): Promise<void>
   dispose(): Promise<void>
@@ -255,9 +261,63 @@ function dshSyncError(kind: 'tool' | 'command', name: string): Error {
   return new Error(`Failed to synchronize Pi ${kind} "${name}" with DSH`)
 }
 
+interface UserQuestionsLike {
+  ask(request: {
+    questions: { id: string; question: string; header?: string; detail?: string; options?: { label: string }[]; multiSelect?: boolean }[]
+    agent?: unknown
+    signal?: AbortSignal
+  }): Promise<{ answers: { id: string; selected: string[]; custom?: string }[] }>
+}
+
+const APPROVE_LABEL = 'Approve'
+const DECLINE_LABEL = 'Decline'
+
+/** Map one Pi dialog onto the DSH user-questions surface. Undefined means explicit cancellation. */
+async function askUserDecision(ctx: Context, agent: Agent, request: UiDecisionRequest): Promise<string | boolean | undefined> {
+  const service = (ctx as unknown as { userQuestions?: UserQuestionsLike }).userQuestions
+  if (service === undefined) throw new Error('DSH user-questions service is not composed; Pi dialogs cannot be answered')
+  const id = randomUUID()
+  const question = request.kind === 'select'
+    ? { id, question: request.title, header: 'Pi workflow', options: request.options.map(label => ({ label })) }
+    : request.kind === 'confirm'
+      ? { id, question: request.title, detail: request.message, header: 'Pi workflow', options: [{ label: APPROVE_LABEL }, { label: DECLINE_LABEL }] }
+      : request.kind === 'editor'
+        ? { id, question: request.title, header: 'Pi workflow', ...(request.prefill === undefined ? {} : { detail: `Current content:\n${request.prefill}` }) }
+        : { id, question: request.title, header: 'Pi workflow', ...(request.placeholder === undefined ? {} : { detail: request.placeholder }) }
+  let answer: Awaited<ReturnType<UserQuestionsLike['ask']>>
+  try {
+    answer = await service.ask({ questions: [question], agent, signal: request.signal })
+  } catch (error) {
+    const code = (error as { code?: string }).code
+    if (code === 'ASK_CANCELLED' || code === 'ASK_ABORTED') return undefined
+    throw new Error('Pi dialog could not reach a DSH user question')
+  }
+  const item = answer.answers.find(entry => entry.id === id)
+  if (answer.answers.length !== 1 || item === undefined) throw new Error('Pi dialog received a malformed answer')
+  if (request.kind === 'select') {
+    const label = item.selected[0]
+    if (item.selected.length !== 1 || item.custom !== undefined || label === undefined || !request.options.includes(label)) {
+      throw new Error('Pi dialog requires exactly one offered option')
+    }
+    return label
+  }
+  if (request.kind === 'confirm') {
+    if (item.custom !== undefined || item.selected.length !== 1) throw new Error('Pi confirmation must select exactly one verdict')
+    if (item.selected[0] === APPROVE_LABEL) return true
+    if (item.selected[0] === DECLINE_LABEL) return false
+    throw new Error('Pi confirmation must select Approve or Decline')
+  }
+  return item.custom ?? ''
+}
+
+function piSessionDir(sessionId: string): string {
+  return join(homedir(), '.dsh', 'pi-sessions', sessionId)
+}
+
 async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: SessionStartSource): Promise<MountedRuntime> {
+  const cwd = agent.session.header.cwd ?? process.cwd()
   const entries = await resolveExtensionEntries(config.extensions, {
-    cwd: agent.session.header.cwd ?? process.cwd(),
+    cwd,
     ...(ctx.baseUrl === undefined ? {} : { baseUrl: ctx.baseUrl }),
     allowLocalPaths: config.allowLocalPaths ?? false,
   })
@@ -265,6 +325,33 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
   let disposing = false
   let deliveries = Promise.resolve()
   let warnedProvider = false
+  // Durable Pi session projection, one per DSH session, so workflow run identity,
+  // branch history, and leases survive agent remount and process restart.
+  let sessionManager: SessionManager | undefined
+  try {
+    const sessionDir = piSessionDir(String(agent.session.header.id))
+    await mkdir(sessionDir, { recursive: true })
+    sessionManager = SessionManager.continueRecent(cwd, sessionDir)
+  } catch (error) {
+    ctx.logger.warn(`${name}: durable Pi session projection unavailable (${String(error)}); using an in-memory Pi session`)
+  }
+  // Pi reads the model inventory synchronously; keep a refreshed DSH catalog snapshot.
+  const modelCatalog: { provider: string; id: string; name: string }[] = []
+  const refreshModels = (): void => {
+    void (async () => {
+      try {
+        const listed = await Promise.all(ctx.llm.listProviders().map(async info => await ctx.llm.listModels(info.id)))
+        modelCatalog.length = 0
+        for (const models of listed) {
+          for (const model of models) modelCatalog.push({ provider: model.provider, id: model.id, name: model.name })
+        }
+      } catch {
+        // Keep the last snapshot; a missing catalog fails closed per Pi capability checks.
+      }
+    })()
+  }
+  refreshModels()
+  let lastPublished = ''
   const queueDelivery = (
     content: string | PiContent[],
     deliver: (blocks: ContentBlock[]) => void,
@@ -279,8 +366,35 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
       }
     })
   }
+  // DSH→Pi projection: extensions treat ctx.sessionManager as the branch record.
+  // Pi-originated messages are already persisted by the host with Pi semantics,
+  // so only native DSH turns are appended here.
+  const projectedIds = new Set<string>()
+  const project = (): void => {
+    if (sessionManager === undefined) return
+    for (const message of agent.session.deriveMessages()) {
+      if (projectedIds.has(message.id)) continue
+      projectedIds.add(message.id)
+      if (message.source.kind === name) continue
+      const text = message.content
+        .filter((block): block is Extract<ContentBlock, { type: 'text' }> => block.type === 'text')
+        .map(block => block.text)
+        .join('\n')
+      if (message.role === 'user') {
+        sessionManager.appendMessage({ role: 'user', content: [{ type: 'text', text }], timestamp: Date.now() } as never)
+      } else if (message.role === 'assistant' && message.source.kind === 'model') {
+        sessionManager.appendMessage({
+          role: 'assistant', content: [{ type: 'text', text }],
+          api: 'dsh-adapter', provider: message.source.provider, model: message.source.model,
+          usage: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, totalTokens: 0, cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, total: 0 } },
+          stopReason: 'stop', timestamp: Date.now(),
+        } as never)
+      }
+    }
+  }
   const runtime = await PiExtensionRuntime.fromPaths(entries, {
-    cwd: agent.session.header.cwd ?? process.cwd(),
+    cwd,
+    ...(sessionManager === undefined ? {} : { sessionManager }),
     projectTrusted: config.projectTrusted ?? false,
     ...(config.flags === undefined ? {} : { flags: config.flags }),
     bridge: {
@@ -317,6 +431,25 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
         warnedProvider = true
         ctx.logger.warn(`${name}: Pi registerProvider is recorded but cannot create a DSH adapter; configure @deepseek-ai/dsh-llm-pi-ai separately`)
       },
+      getModel: () => {
+        const provider = agent.options.provider
+        const model = agent.options.model
+        return provider !== undefined && model !== undefined ? { provider, id: model } : undefined
+      },
+      listModels: () => modelCatalog,
+      refreshModels,
+      publishUi: event => {
+        const line = `[pi:${event.kind}] ${event.text}`
+        // Status/widget updates key on replacement; suppress identical consecutive lines.
+        if (line === lastPublished) return
+        lastPublished = line
+        queueDelivery(line, blocks => {
+          const message = createUserMessage({ content: blocks, source: { kind: name } })
+          if (agent.status === 'idle') agent.inject(message)
+          else agent.followup(message)
+        })
+      },
+      requestDecision: request => askUserDecision(ctx, agent, request),
     },
   })
   let commandContext: Context | undefined
@@ -441,6 +574,7 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
   let disposal: Promise<void> | undefined
   mounted = {
     runtime,
+    project,
     reconcile,
     drainDeliveries: () => deliveries,
     dispose() {
@@ -521,6 +655,7 @@ export function apply(ctx: Context, config: Config): void {
     const mounted = await ensure(agent)
     await mounted.settling
     await mounted.drainDeliveries()
+    mounted.project()
     const downstream = await next()
     if (downstream.kind === 'reject') return downstream
     let entered = downstream.messages
@@ -624,6 +759,8 @@ export function apply(ctx: Context, config: Config): void {
         if (ended.usedExisting && index >= 0) messages[index] = ended.message
         else messages.push(ended.message)
       }
+      // Durable branch entries must exist before extensions observe agent_end/settled.
+      mounted.project()
       try {
         await mounted.runtime.emit({ type: 'agent_end', messages } as ExtensionEvent)
       } catch {

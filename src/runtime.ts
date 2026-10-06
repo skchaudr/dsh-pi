@@ -18,6 +18,8 @@ import type {
   ResolvedCommand,
 } from '@earendil-works/pi-coding-agent'
 import { Value } from 'typebox/value'
+import { persistWorkflowMessage } from './pi-workflows.js'
+import { createUiBridge, type UiDecisionRequest, type UiPublication } from './ui-bridge.js'
 
 export interface RuntimeBridge {
   reportError?(context: string): void
@@ -37,10 +39,22 @@ export interface RuntimeBridge {
   hasPendingMessages?(): boolean
   isIdle?(): boolean
   waitForIdle?(): Promise<void>
+  /** DSH's current model selection, mapped into the Pi context. */
+  getModel?(): { provider: string; id: string } | undefined
+  /** Cached snapshot of DSH's model catalog for Pi inventory and alias resolution. */
+  listModels?(): readonly { provider: string; id: string; name: string }[]
+  /** Trigger an asynchronous refresh of the DSH catalog snapshot. */
+  refreshModels?(): void
+  /** Publish Pi UI text/status/widget output visibly into DSH. */
+  publishUi?(event: UiPublication): void
+  /** Await a real human decision through DSH user questions; undefined means cancellation. */
+  requestDecision?(request: UiDecisionRequest): Promise<string | boolean | undefined>
 }
 
 export interface RuntimeOptions {
   cwd: string
+  /** A durable Pi projection owned by the enclosing DSH session. */
+  sessionManager?: SessionManager
   bridge?: RuntimeBridge
   projectTrusted?: boolean
   mode?: 'tui' | 'rpc' | 'json' | 'print'
@@ -120,11 +134,22 @@ async function loadSelectedExtensions(paths: string[], cwd: string): Promise<Loa
 
 function modelRegistryFacade(bridge: RuntimeBridge): object {
   const providers = new Map<string, ProviderConfig>()
+  const piModel = (entry: { provider: string; id: string; name: string }) => ({
+    provider: entry.provider, id: entry.id, name: entry.name,
+    api: 'dsh-adapter', baseUrl: '', envKey: undefined,
+    contextWindow: 0, maxTokens: 0,
+    input: ['text'], cost: { input: 0, output: 0, request: 0 },
+    reasoning: true, supportedParameters: [],
+  })
   return {
-    getAll: () => [],
-    getAvailable: () => [],
-    find: () => undefined,
-    hasConfiguredAuth: () => false,
+    getAll: () => (bridge.listModels?.() ?? []).map(piModel),
+    getAvailable: () => (bridge.listModels?.() ?? []).map(piModel),
+    find: (provider: string, id: string) => {
+      const entry = (bridge.listModels?.() ?? []).find(model => model.provider === provider && model.id === id)
+      return entry === undefined ? undefined : piModel(entry)
+    },
+    refresh: async () => { bridge.refreshModels?.() },
+    hasConfiguredAuth: () => (bridge.listModels?.() ?? []).length > 0,
     getApiKeyAndHeaders: async () => ({ ok: false, error: 'No Pi model credentials are exposed by DSH' }),
     getProviderAuthStatus: () => ({ type: 'none' }),
     getProviderDisplayName: (name: string) => name,
@@ -151,7 +176,19 @@ function bindActions(
 ): { actions: ExtensionActions; context: ExtensionContextActions } {
   const bridge = options.bridge ?? {}
   const actions: ExtensionActions = {
-    sendMessage: (message, delivery) => { bridge.sendMessage?.(message, delivery) },
+    sendMessage: (message, delivery) => {
+      // Pi semantics: sendMessage durably appends the custom entry before delivery.
+      // Workflow messages dedupe by workflowMessageId; a duplicate is never re-enqueued.
+      const custom = message as {
+        customType: string
+        content: Parameters<SessionManager['appendCustomMessageEntry']>[1]
+        display: boolean
+        details?: unknown
+      }
+      const persisted = persistWorkflowMessage(state.sessionManager, custom)
+      if (persisted === undefined) state.sessionManager.appendCustomMessageEntry(custom.customType, custom.content, custom.display, custom.details)
+      if (persisted?.duplicate !== true) bridge.sendMessage?.(message, delivery)
+    },
     sendUserMessage: (content, delivery) => { bridge.sendUserMessage?.(content, delivery) },
     appendEntry: (type, data) => {
       state.sessionManager.appendCustomEntry(type, data)
@@ -207,7 +244,7 @@ function bindActions(
   return {
     actions,
     context: {
-      getModel: () => undefined,
+      getModel: () => bridge.getModel?.() as never,
       getScopedModels: () => [],
       isIdle: () => bridge.isIdle?.() ?? true,
       isProjectTrusted: () => options.projectTrusted ?? false,
@@ -235,7 +272,7 @@ async function finishLoad(result: LoadExtensionsResult, options: RuntimeOptions)
     unavailableTools: new Map(),
     signalStore: new AsyncLocalStorage<AbortSignal | undefined>(),
     thinkingLevel: 'off',
-    sessionManager: SessionManager.inMemory(options.cwd),
+    sessionManager: options.sessionManager ?? SessionManager.inMemory(options.cwd),
   }
   let runner: ExtensionRunner | undefined
   const bound = bindActions(result.runtime, options, state, () => runner)
@@ -263,7 +300,18 @@ async function finishLoad(result: LoadExtensionsResult, options: RuntimeOptions)
   runner.onError(error => {
     options.bridge?.reportError?.(`Pi extension "${error.extensionPath}" handler "${error.event}" failed`)
   })
-  runner.setUIContext(undefined, options.mode ?? 'rpc')
+  // Pi 0.87 hasUI() only tests UI-object identity, never mode: install the text
+  // bridge, then override hasUI with the bridge's honest interactive capability.
+  const interactive = options.bridge?.requestDecision !== undefined
+  const uiBridge = createUiBridge(runner.createContext().ui, {
+    publish: event => { options.bridge?.publishUi?.(event) },
+    ...(options.bridge?.requestDecision === undefined ? {} : {
+      decide: (request: UiDecisionRequest) => options.bridge!.requestDecision!(request),
+    }),
+    getSignal: () => state.signalStore.getStore(),
+  })
+  runner.setUIContext(uiBridge.ui, options.mode ?? (interactive ? 'rpc' : 'print'))
+  ;(runner as unknown as { hasUI: () => boolean }).hasUI = () => uiBridge.hasUI
   state.knownTools = new Set(runner.getAllRegisteredTools().map(tool => tool.definition.name))
   state.activeTools = new Set(state.knownTools)
   for (const [name, value] of Object.entries(options.flags ?? {})) runner.setFlagValue(name, value)
