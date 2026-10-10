@@ -17,6 +17,7 @@ import { createDshToolDefinition, piContentToDsh } from './dsh-adapter.js'
 import type { UiDecisionRequest } from './ui-bridge.js'
 import { resolveExtensionEntries } from './resolver.js'
 import { PiExtensionRuntime } from './runtime.js'
+import { createUiPublisher } from './ui-publisher.js'
 import {
   ControlPlaneManager,
   createDshReceiptSink,
@@ -75,6 +76,8 @@ interface MountedRuntime {
   project(): void
   reconcile(): void
   drainDeliveries(): Promise<void>
+  flushUi(): void
+  uiState(): readonly { kind: string; key?: string; text: string }[]
   dispose(): Promise<void>
   lastTurn?: number
   openTurn?: { piTurnIndex: number; assistantCount: number }
@@ -351,7 +354,6 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
     })()
   }
   refreshModels()
-  let lastPublished = ''
   const queueDelivery = (
     content: string | PiContent[],
     deliver: (blocks: ContentBlock[]) => void,
@@ -366,6 +368,17 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
       }
     })
   }
+  const uiPublisher = createUiPublisher({
+    sendNextTurn: text => {
+      queueDelivery(text, blocks => {
+        agent.send(createUserMessage({ content: blocks, source: { kind: name } }), 'next-turn', false)
+      })
+    },
+    onState: state => {
+      // State is replace-in-place; retrievable via uiState(). Debug log only, never the transcript.
+      ;(ctx.logger as { debug?: (m: string) => void }).debug?.(`${name}: ui state ${state.map(s => `${s.kind}:${s.key ?? ''}=${s.text.split('\n')[0]!.slice(0, 80)}`).join(' | ')}`)
+    },
+  })
   // DSH→Pi projection: extensions treat ctx.sessionManager as the branch record.
   // Pi-originated messages are already persisted by the host with Pi semantics,
   // so only native DSH turns are appended here.
@@ -439,15 +452,9 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
       listModels: () => modelCatalog,
       refreshModels,
       publishUi: event => {
-        const line = `[pi:${event.kind}] ${event.text}`
-        // Status/widget updates key on replacement; suppress identical consecutive lines.
-        if (line === lastPublished) return
-        lastPublished = line
-        queueDelivery(line, blocks => {
-          const message = createUserMessage({ content: blocks, source: { kind: name } })
-          if (agent.status === 'idle') agent.inject(message)
-          else agent.followup(message)
-        })
+        uiPublisher.publish(event)
+        // Idle (no turn will end soon): flush on the next macrotask so bursts coalesce.
+        if (uiPublisher.pending() && agent.status === 'idle') setTimeout(() => { uiPublisher.flush() }, 0)
       },
       requestDecision: request => askUserDecision(ctx, agent, request),
     },
@@ -577,6 +584,8 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
     project,
     reconcile,
     drainDeliveries: () => deliveries,
+    flushUi: () => { uiPublisher.flush() },
+    uiState: () => uiPublisher.state(),
     dispose() {
       if (disposal === undefined) {
         disposing = true
@@ -761,6 +770,7 @@ export function apply(ctx: Context, config: Config): void {
       }
       // Durable branch entries must exist before extensions observe agent_end/settled.
       mounted.project()
+      mounted.flushUi()
       try {
         await mounted.runtime.emit({ type: 'agent_end', messages } as ExtensionEvent)
       } catch {

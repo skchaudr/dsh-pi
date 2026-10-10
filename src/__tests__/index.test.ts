@@ -439,6 +439,32 @@ describe('dsh-pi plugin', () => {
     await harness.cleanup()
   })
 
+  it('does not flood the transcript with Pi UI calls: coalesced non-waking next-turn notice only', async () => {
+    const harness = createHarness(fixture('ui-flood'))
+    await harness.enterStep(1, 1)
+    await new Promise(resolve => setTimeout(resolve, 20))
+    expect(harness.agent.followup).not.toHaveBeenCalled()
+    expect(harness.agent.steer).not.toHaveBeenCalled()
+    expect(harness.agent.inject).not.toHaveBeenCalled()
+    harness.agent.status = 'running'
+    harness.sessionMessages.push({
+      role: 'assistant', content: [{ type: 'text', text: 'done' }],
+      source: { kind: 'model', provider: 'test', model: 'test' },
+    })
+    await harness.handlers.get('session/event')?.(harness.agent.session as never, {
+      type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } },
+    } as never)
+    expect(harness.agent.send).toHaveBeenCalledOnce()
+    const [message, target, wakeup] = harness.agent.send.mock.calls[0]!
+    expect(target).toBe('next-turn')
+    expect(wakeup).toBe(false)
+    const text = JSON.stringify(message)
+    expect(text).toContain('advise one')
+    expect(text).toContain('hold two')
+    expect(text).not.toContain('hawk')
+    await harness.cleanup()
+  })
+
   it('pairs the final Pi turn and agent end on a DSH error boundary', async () => {
     const events: string[] = []
     ;(globalThis as { __piLifecycleEvents?: string[] }).__piLifecycleEvents = events
