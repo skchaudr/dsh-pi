@@ -357,12 +357,13 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
   const queueDelivery = (
     content: string | PiContent[],
     deliver: (blocks: ContentBlock[]) => void,
+    allowDisposing = false,
   ): void => {
     deliveries = deliveries.then(async () => {
-      if (disposing) return
+      if (disposing && !allowDisposing) return
       try {
         const blocks = await piMessageContent(content, ctx.attachments)
-        if (!disposing) deliver(blocks)
+        if (!disposing || allowDisposing) deliver(blocks)
       } catch {
         ctx.logger.warn(`${name}: Pi message delivery failed`)
       }
@@ -372,8 +373,10 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
     sendNextTurn: text => {
       queueDelivery(text, blocks => {
         agent.send(createUserMessage({ content: blocks, source: { kind: name } }), 'next-turn', false)
-      })
+      }, true)
     },
+    isIdle: () => agent.status === 'idle',
+    onInfo: text => { ctx.logger.info(`${name}: ${text.split('\n')[0]!.slice(0, 200)}`) },
     onState: state => {
       // State is replace-in-place; retrievable via uiState(). Debug log only, never the transcript.
       ;(ctx.logger as { debug?: (m: string) => void }).debug?.(`${name}: ui state ${state.map(s => `${s.kind}:${s.key ?? ''}=${s.text.split('\n')[0]!.slice(0, 80)}`).join(' | ')}`)
@@ -588,6 +591,7 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
     uiState: () => uiPublisher.state(),
     dispose() {
       if (disposal === undefined) {
+        uiPublisher.flush()
         disposing = true
         disposal = (async () => {
           await deliveries
@@ -753,7 +757,8 @@ export function apply(ctx: Context, config: Config): void {
     const entry = sessions.get(session)
     if (entry === undefined) return
     const mounted = await entry.pending
-    if (mounted.lastTurn !== event.data.turn) return
+    mounted.flushUi()
+    if (mounted.lastTurn !== event.data.turn) { await mounted.drainDeliveries(); return }
     const settling = (mounted.settling ?? Promise.resolve()).then(async () => {
       let ended: Awaited<ReturnType<typeof endPiTurn>>
       let failed = false

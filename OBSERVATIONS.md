@@ -7,3 +7,9 @@
 - hasUI: NOT changed (dialogs need hasUI=true). pi-warden advise branch is `ctx.hasUI && config.notices ? notify : steer-if-!hasUI`; with `notices:false` (default) it never calls notify, so advise stays silent regardless of this fix. Mitigation: set pi-warden `notices: true` (now safe, coalesced). Not verified against pi-warden source/runtime here.
 - Edge: warnings raised mid-turn arrive at next turn, not the next step. Using 'next-step' would reach the model sooner; left as per spec.
 - Widget-factory fallback text (level warning) is silent: it carries no information.
+
+## Review fixes
+- Info notify: delivered as a non-waking message when agent is idle (user command output, e.g. /warden); during a turn it is kept in state (cap 20), logged via logger.info, and rides along (low priority) when a warning summary is sent. In-turn info with no warnings is never a message (state+log only).
+- Dedupe is exact text with an (xN) count; digit-stripping removed.
+- Warning-level widget fallbacks are announced once per distinct text, then state only.
+- Notices are flushed on dispose and on stale turn/end (delivery bypasses the disposing guard).

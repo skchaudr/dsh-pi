@@ -5,6 +5,10 @@ export interface UiPublisherOptions {
   sendNextTurn(text: string): void
   /** Called when replace-in-place state changes (badge/log surface). Never a transcript message. */
   onState?(state: readonly UiPublication[]): void
+  /** True when no model turn is running (e.g. a user command is executing). */
+  isIdle?(): boolean
+  /** Every info notice is reported here (log surface) even when not delivered. */
+  onInfo?(text: string): void
 }
 
 export interface UiPublisher {
@@ -17,17 +21,28 @@ export interface UiPublisher {
   pending(): boolean
 }
 
-const normalize = (text: string): string => text.replace(/\d+/g, '#').replace(/\s+/g, ' ').trim()
+const INFO_STATE_CAP = 20
 
 /**
  * Pi's UI is a replace-in-place status bar plus transient notices, not a log.
- * status/widget -> keyed state (no message, no turn). warning/error notify and
- * unsupported errors -> buffered, deduped, flushed as ONE non-waking message.
- * info notify -> dropped from the transcript (rulings are warning/error).
+ * status/widget -> keyed state (no message, no turn).
+ * warning/error notify, warning widgets, unsupported errors -> buffered, deduped by exact
+ * text with a repeat count, flushed as ONE non-waking message.
+ * info notify -> delivered (non-waking) when idle (user command output); during a model
+ * turn it is kept in state, reported via onInfo, and rides along with a warning summary.
  */
 export function createUiPublisher(options: UiPublisherOptions): UiPublisher {
   const states = new Map<string, UiPublication>()
-  const buffer = new Map<string, UiPublication>()
+  const buffer = new Map<string, { event: UiPublication; count: number }>()
+  const infoBuffer: string[] = []
+  const turnInfo: string[] = []
+  const announcedWidgets = new Set<string>()
+  const add = (event: UiPublication): void => {
+    const id = `${event.kind}:${event.level}:${event.text}`
+    const hit = buffer.get(id)
+    if (hit === undefined) buffer.set(id, { event, count: 1 })
+    else hit.count += 1
+  }
   const publish = (event: UiPublication): void => {
     if (event.kind === 'status' || event.kind === 'widget') {
       const id = `${event.kind}:${event.key ?? ''}`
@@ -35,23 +50,43 @@ export function createUiPublisher(options: UiPublisherOptions): UiPublisher {
         if (!states.delete(id)) return
       } else {
         const prev = states.get(id)
+        if (event.kind === 'widget' && event.level === 'warning' && !announcedWidgets.has(event.text)) {
+          announcedWidgets.add(event.text)
+          add(event)
+        }
         if (prev !== undefined && prev.text === event.text && prev.level === event.level) return
         states.set(id, event)
       }
       options.onState?.([...states.values()])
       return
     }
-    if (event.level === 'info') return
-    const id = `${event.kind}:${event.level}:${normalize(event.text)}`
-    if (!buffer.has(id)) buffer.set(id, event)
+    if (event.level === 'info') {
+      options.onInfo?.(event.text)
+      if (options.isIdle?.() === true) { infoBuffer.push(event.text); return }
+      turnInfo.push(event.text)
+      const id = `notify:info:${event.text}`
+      states.delete(id)
+      states.set(id, event)
+      const infoIds = [...states.keys()].filter(k => k.startsWith('notify:info:'))
+      for (const old of infoIds.slice(0, Math.max(0, infoIds.length - INFO_STATE_CAP))) states.delete(old)
+      return
+    }
+    add(event)
   }
   const flush = (): void => {
-    if (buffer.size === 0) return
+    if (buffer.size === 0 && infoBuffer.length === 0) { return }
     const items = [...buffer.values()]
     buffer.clear()
-    const lines = items.map(item => `- [${item.level}] ${item.text}`)
-    const head = items.length === 1 ? '[pi:notice] 1 advisory from Pi extensions' : `[pi:notice] ${items.length} advisories from Pi extensions`
-    options.sendNextTurn(`${head}\n${lines.join('\n')}`)
+    const lines = items.map(({ event, count }) => `- [${event.level}] ${event.text}${count > 1 ? ` (x${count})` : ''}`)
+    const infos = items.length > 0 ? turnInfo.splice(0) : []
+    turnInfo.length = items.length > 0 ? 0 : turnInfo.length
+    infos.push(...infoBuffer.splice(0))
+    for (const text of infos) lines.push(`- [info] ${text}`)
+    const n = items.length + infos.length
+    options.sendNextTurn(`[pi:notice] ${n} ${n === 1 ? 'notice' : 'notices'} from Pi extensions\n${lines.join('\n')}`)
   }
-  return { publish, flush, state: () => [...states.values()], pending: () => buffer.size > 0 }
+  return {
+    publish, flush, state: () => [...states.values()],
+    pending: () => buffer.size > 0 || infoBuffer.length > 0,
+  }
 }

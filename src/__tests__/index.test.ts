@@ -472,9 +472,15 @@ describe('dsh-pi plugin', () => {
       type: 'turn/end', data: { turn: 99, reason: { kind: 'completed' } },
     } as never)
     expect(harness.agent.send).toHaveBeenCalledOnce()
-    await harness.enterStep(2, 1)
     await harness.cleanup()
-    expect(harness.agent.send).toHaveBeenCalledTimes(2)
+  })
+
+  it('flushes buffered notices when disposed before any turn end', async () => {
+    const harness = createHarness(fixture('ui-flood'))
+    await harness.enterStep(1, 1)
+    harness.agent.status = 'running'
+    await harness.cleanup()
+    expect(harness.agent.send).toHaveBeenCalledOnce()
   })
 
   it('pairs the final Pi turn and agent end on a DSH error boundary', async () => {
