@@ -5,11 +5,15 @@ const setup = () => {
   const sent: string[] = []
   const wake = vi.fn()
   const states: unknown[] = []
+  const idle = { value: false }
+  const infos: string[] = []
   const publisher = createUiPublisher({
+    isIdle: () => idle.value,
+    onInfo: text => { infos.push(text) },
     sendNextTurn: text => { sent.push(text) },
     onState: s => { states.push(s) },
   })
-  return { sent, wake, states, publisher }
+  return { sent, wake, states, publisher, idle, infos }
 }
 
 describe('ui publisher (flood fix)', () => {
@@ -53,23 +57,58 @@ describe('ui publisher (flood fix)', () => {
     expect(sent).toHaveLength(1)
     expect(sent[0]).toContain('advisory A')
     expect(sent[0]).toContain('hold B')
-    expect(sent[0]!.match(/slop/g)).toHaveLength(1)
+    expect(sent[0]!.match(/slop/g)).toHaveLength(2)
+    expect(sent[0]).toContain('x2')
   })
 
-  it('info notify is never a message', () => {
-    const { sent, publisher } = setup()
+  it('info notify during a model turn is not a message but is kept in state and logged', () => {
+    const { sent, publisher, infos } = setup()
     for (let i = 0; i < 10; i++) publisher.publish({ kind: 'notify', level: 'info', text: `fyi ${i}` })
     publisher.flush()
     expect(sent).toHaveLength(0)
+    expect(infos).toHaveLength(10)
+    expect(publisher.state().filter(s => s.kind === 'notify')).toHaveLength(10)
   })
 
-  it('widget factory fallbacks and unsupported-info stay silent; unsupported errors surface once', () => {
+  it('info notify while idle (user command) is delivered as a non-waking message', () => {
+    const { sent, publisher, idle } = setup()
+    idle.value = true
+    publisher.publish({ kind: 'notify', level: 'info', text: 'warden mode: advise' })
+    publisher.flush()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]).toContain('warden mode: advise')
+  })
+
+  it('in-turn info rides along (low priority) with a warning summary', () => {
     const { sent, publisher } = setup()
-    publisher.publish({ kind: 'widget', key: 'f', level: 'warning', text: '[Pi widget f: DSH cannot render terminal components]', placement: 'aboveEditor' })
-    publisher.publish({ kind: 'unsupported', level: 'error', text: 'Pi UI custom is unsupported' })
+    publisher.publish({ kind: 'notify', level: 'info', text: 'low thing' })
+    publisher.publish({ kind: 'notify', level: 'warning', text: 'high thing' })
+    publisher.flush()
+    expect(sent).toHaveLength(1)
+    expect(sent[0]!.indexOf('high thing')).toBeLessThan(sent[0]!.indexOf('low thing'))
+  })
+
+  it('distinct counts are distinct warnings; exact repeats show a count', () => {
+    const { sent, publisher } = setup()
+    publisher.publish({ kind: 'notify', level: 'warning', text: '2 secrets found' })
+    publisher.publish({ kind: 'notify', level: 'warning', text: '3 secrets found' })
+    publisher.publish({ kind: 'notify', level: 'warning', text: '3 secrets found' })
+    publisher.flush()
+    expect(sent[0]).toContain('2 secrets found')
+    expect(sent[0]).toContain('3 secrets found (x2)')
+  })
+
+  it('warning-level widget fallbacks are buffered as notices (once per text); unsupported errors surface', () => {
+    const { sent, publisher } = setup()
+    const w = { kind: 'widget', key: 'f', level: 'warning', text: '[Pi widget f: DSH cannot render terminal components]', placement: 'aboveEditor' } as const
+    publisher.publish(w)
+    publisher.publish(w)
     publisher.publish({ kind: 'unsupported', level: 'error', text: 'Pi UI custom is unsupported' })
     publisher.flush()
     expect(sent).toHaveLength(1)
-    expect(sent[0]).not.toContain('widget f')
+    expect(sent[0]).toContain('widget f')
+    publisher.publish(w)
+    publisher.flush()
+    expect(sent).toHaveLength(1)
   })
 })
