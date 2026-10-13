@@ -55,7 +55,7 @@ describe('pi ui projection', () => {
     const registered: { key?: string }[] = []
     registerPiUiProjection({
       inject: (_names, run) => {
-        run({ sessionProjections: { register: (definition) => { registered.push(definition); return () => {} } } })
+        run({ sessionProjections: { register: (definition: { key?: string }) => { registered.push(definition); return () => {} } } })
       },
     })
     expect(registered.map(definition => definition.key)).toEqual(['piUi'])
