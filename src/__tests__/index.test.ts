@@ -53,7 +53,11 @@ function createHarness(extension: string, options: { strict?: boolean } = {}) {
     id: 'agent-1', status: 'idle', options: {}, inbox, cancel: vi.fn(),
     whenIdle: vi.fn(async () => {}),
     send: vi.fn(), followup: vi.fn((message: unknown) => { inbox.nextTurn.push(message) }), steer: vi.fn(), inject: vi.fn(),
-    session: { header: { cwd: '/workspace' }, deriveMessages: () => sessionMessages },
+    session: {
+      header: { cwd: '/workspace' },
+      deriveMessages: () => sessionMessages,
+      append: undefined as undefined | ((...args: unknown[]) => unknown),
+    },
     ctx: {
       inject: (_services: string[], callback: (ctx: unknown) => void) => {
         callback(agent.ctx)
@@ -441,6 +445,8 @@ describe('dsh-pi plugin', () => {
 
   it('does not flood the transcript with Pi UI calls: coalesced non-waking next-turn notice only', async () => {
     const harness = createHarness(fixture('ui-flood'))
+    const appended: unknown[][] = []
+    harness.agent.session.append = (...args: unknown[]) => { appended.push(args) }
     await harness.enterStep(1, 1)
     await new Promise(resolve => setTimeout(resolve, 20))
     expect(harness.agent.followup).not.toHaveBeenCalled()
@@ -462,6 +468,12 @@ describe('dsh-pi plugin', () => {
     expect(text).toContain('advise one')
     expect(text).toContain('hold two')
     expect(text).not.toContain('hawk')
+    const badge = appended.filter(call => call[0] === 'pi-ui/state')
+    expect(badge).toHaveLength(20)
+    expect(badge.at(-1)?.[1]).toEqual({
+      items: [{ kind: 'status', key: 'hawk', level: 'info', text: 'hawk 19 ok' }],
+    })
+    expect(badge.at(-1)?.[2]).toEqual({ ignorable: true })
     await harness.cleanup()
   })
 

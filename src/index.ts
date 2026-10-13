@@ -18,6 +18,7 @@ import type { UiDecisionRequest } from './ui-bridge.js'
 import { resolveExtensionEntries } from './resolver.js'
 import { PiExtensionRuntime } from './runtime.js'
 import { createUiPublisher } from './ui-publisher.js'
+import { appendPiUiState, piUiItems, registerPiUiProjection } from './pi-ui.js'
 import {
   ControlPlaneManager,
   createDshReceiptSink,
@@ -378,7 +379,12 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
     isIdle: () => agent.status === 'idle',
     onInfo: text => { ctx.logger.info(`${name}: ${text.split('\n')[0]!.slice(0, 200)}`) },
     onState: state => {
-      // State is replace-in-place; retrievable via uiState(). Debug log only, never the transcript.
+      // Replace-in-place badge. The durable event is log-only (ignorable), not a transcript row.
+      try {
+        appendPiUiState(agent.session, piUiItems(state))
+      } catch {
+        ctx.logger.warn(`${name}: Pi UI badge state was not recorded`)
+      }
       ;(ctx.logger as { debug?: (m: string) => void }).debug?.(`${name}: ui state ${state.map(s => `${s.kind}:${s.key ?? ''}=${s.text.split('\n')[0]!.slice(0, 80)}`).join(' | ')}`)
     },
   })
@@ -629,6 +635,7 @@ async function mountAgent(ctx: Context, agent: Agent, config: Config, reason: Se
 }
 
 export function apply(ctx: Context, config: Config): void {
+  registerPiUiProjection(ctx)
   if (config.extensions.length === 0) {
     ctx.logger.info(`${name}: no Pi extensions configured`)
     return
