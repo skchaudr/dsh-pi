@@ -13,3 +13,9 @@
 - Dedupe is exact text with an (xN) count; digit-stripping removed.
 - Warning-level widget fallbacks are announced once per distinct text, then state only.
 - Notices are flushed on dispose and on stale turn/end (delivery bypasses the disposing guard).
+
+## Web-UI badge (piUi)
+
+- Hawk footer status and warden widgets stay replace-in-place. Each change appends one whole `pi-ui/state` snapshot (`ignorable: true`). The `piUi` projection folds that event. The web client reads it with `useProjection('piUi')` in `conversation.session.header.utilities`.
+- Do hawk/warden events written as durable domain events show in the transcript? No. `goal/change` is the precedent: it is a known log-only event, not an append-surface event. The chat fallback (`packages/client/ui-chat/src/client/conversation-nodes/fallback.ts`) renders a row only when `isAppendSurfaceEvent` is true, which requires `user/message`, `assistant/message`, `tool/result`, `system/message`, or `developer/message` with `surfaceOp: 'append'`. `goal/change` never becomes a transcript row; GoalBar reads the projection. `pi-ui/state` is the same kind of record. It is out-of-repo, so it is marked `ignorable` (DSH `Session.append` log-only option). That marker lets reload keep the event and still leaves it off the append surface, so it does not show in the transcript. Warning and error notices remain one coalesced non-waking user message, and that message does show.
+- A `setWidget` that passes a terminal component is still the bridge fallback sentence. The panel shows that sentence, not a painted TUI widget.
