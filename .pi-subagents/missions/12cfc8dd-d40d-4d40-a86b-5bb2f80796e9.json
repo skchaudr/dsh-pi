@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "id": "12cfc8dd-d40d-4d40-a86b-5bb2f80796e9",
+  "title": "Read-only verification in /Users/sab-mini/repos/dsh-pi. Validate the reported S0-S5 commits 7be47...",
+  "objective": "Read-only verification in /Users/sab-mini/repos/dsh-pi. Validate the reported S0-S5 commits 7be47d5, 23c93e3, 3d0e5a6, d96122b against current code and tests. Inspect AGENTS.md first. Verify git status/divergence and remote relationship; inspect control verb implementation, ACP mirroring/adapter, audit/acknowledgement flow, and runtime entry points. Run the focused and full safe test suites and any non-mutating CLI help/status probes. Report exact established contracts that agent-observability should call, remaining gaps for a live round trip, and whether the four commits are ready for an ordinary push. Do not modify, commit, push, or contact external services.",
+  "status": "completed",
+  "createdAt": "2026-09-04T13:58:32.133Z",
+  "updatedAt": "2026-09-04T14:02:36.356Z",
+  "runs": [
+    {
+      "runId": "d6f25b89-c464-4f5b-b1a1-16530ca9a6a5",
+      "mode": "workflow",
+      "asyncDir": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/d6f25b89-c464-4f5b-b1a1-16530ca9a6a5",
+      "status": "complete",
+      "startedAt": "2026-09-04T13:58:32.134Z",
+      "completedAt": "2026-09-04T14:02:36.356Z"
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "d6f25b89-c464-4f5b-b1a1-16530ca9a6a5",
+      "key": "dsh-live-verify",
+      "status": "completed",
+      "startedAt": "2026-09-04T13:58:32.149Z",
+      "updatedAt": "2026-09-04T14:02:36.141Z",
+      "artifactPaths": [
+        "/Users/sab-mini/.pi/agent/sessions/subagent/dd00e286/run-0/session.jsonl"
+      ],
+      "runId": "dd00e286",
+      "agent": "reviewer",
+      "task": "Read-only verification in /Users/sab-mini/repos/dsh-pi. Validate the reported S0-S5 commits 7be47d5, 23c93e3, 3d0e5a6, d96122b against current code and tests. Inspect AGENTS.md first. Verify git status/divergence and remote relationship; inspect control verb implementation, ACP mirroring/adapter, audit/acknowledgement flow, and runtime entry points. Run the focused and full safe test suites and any non-mutating CLI help/status probes. Report exact established contracts that agent-observability should call, remaining gaps for a live round trip, and whether the four commits are ready for an ordinary push. Do not modify, commit, push, or contact external services.",
+      "completedAt": "2026-09-04T14:02:36.141Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/subagent/dd00e286/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-04T14:02:36.141Z",
+        "status": "completed"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "kind": "status",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/d6f25b89-c464-4f5b-b1a1-16530ca9a6a5/status.json"
+    },
+    {
+      "kind": "other",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/d6f25b89-c464-4f5b-b1a1-16530ca9a6a5/events.jsonl",
+      "description": "Lifecycle events"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/sab-mini/.pi/agent/sessions/subagent/dd00e286/run-0/session.jsonl"
+    }
+  ],
+  "receipts": [],
+  "cwd": "/Users/sab-mini/repos/dsh-pi",
+  "ownerSessionId": "/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-19-00-878Z_01a0676c-390e-7ef8-b728-46b26b2c0393.jsonl",
+  "summary": "Workflow completed with 1 child run(s). Return: {\n  \"key\": \"dsh-live-verify\",\n  \"ok\": true,\n  \"runId\": \"dd00e286\",\n  \"output\": \"No—the four commits are not ready for an ordinary push despite passing direct tests.\\n\\n## Review\\n- Correct: commits form a linear four-commit chain from `origin/main`; local tracking reports `0 behind / 4 ahead`, with no tracked or staged changes.\\n- Correct: focused tests pass `23/23`; full direct Vitest passes `90/90`; both TypeScript configurations typecheck.\\n- Blocker: S0–S5 are exported utilities only. `src/index.ts:25-29` exports them, but `apply()` at `src/index.ts:427-535` never creates a control manager, registers live agents, ingests events, records metrics, or mounts ACP transport.\\n- Blocker: control verbs report success without performing an action when callbacks/controllers are absent. This affects steer (`src/control.ts:209-224`), reassign (`262-284`), respawn—including nonexistent sessions (`301-339`)—and abort with an optional controller (`397-414`).\\n- Blocker: ACP cancel records `outco Trace: 2 event(s)."
+}

@@ -1,0 +1,12 @@
+## Review
+- **BLOCKED — DSH-W02A:** `plan.md` and `progress.md` are absent; only `.pi-subagents/artifacts/outputs/51a7cea8/plan.md` exists.
+- Blocker: `src/index.ts:427-535` does not mount ingestion, persistence, control registration, or ACP transport.
+- Blocker: use `agent.session.append(...)`; never emit `session/event` or write JSONL directly. Flush through the configured session store/persistence coordinator.
+- Blocker: `control/intervention` is absent from `known-event-types.js:15-70`; `ignorable: true`, `hook/invoked`, and invented acknowledgements are not verified replacements.
+- Blocker: actual methods are `steer(request)` and `abort(request)`, not `steerSession`/`abortSession` (`src/control.ts:112+`).
+- Blocker: several verbs can succeed without actuation (`src/control.ts:209-224,262-284,301-339,397-414`); ACP also records success before abort resolves (`src/acp-mirror.ts:79-93,163-200`).
+- **BLOCKED — DSH-W02B:** its event contract depends on unresolved W02A vocabulary and persisted format; agent-observability live source was not independently verified before the tool limit.
+- Blocker: plan §5 assumes `events.jsonl` and invokes ingest without `--db`, risking the production database. Canonical files are adapter-owned `session.jsonl` or `session.jsonl.zst`.
+- Correct fixture rule: derive and commit a minimal sanitized fixture; never copy, mutate, or execute against the 556 KB personal Pi JSONL. Remove paths, content, signatures, tokens, and SHAs.
+- **Smallest ready frontier:** restore canonical `plan.md`/`progress.md`, then redo W01B as a read-only contract packet proving actual lifecycle hooks, supported event types, native append/flush, adapter reload, and temporary DB commands. W02A/W02B remain held.
+- No files changed; tests were not run because this was review-only and the canonical packet files were missing.

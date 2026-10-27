@@ -1,0 +1,145 @@
+{
+  "runId": "27268e87",
+  "agent": "scout",
+  "task": "C00-B read-only executable preflight across /Users/sab-mini/repos/dsh-pi and /Users/sab-mini/repos/agent-observability. Determine a real, deterministic, bounded Pi-backed DSH canary launch path: available dsh CLI/profile commands; temporary DSH_HOME/data/profile setup; local or fake provider options requiring no paid provider or secrets; exact way to create a known session and one real steer/abort acknowledgement; timeout and cleanup; AGENT_OBS_DB override into a temporary SQLite DB; exact ingest/query commands; and hashing proof production DB stays unchanged. Verify available binaries and current package scripts. Cite commands and mark any unresolved capability. Do not execute paid work, mutate profiles, or edit files.\n\n---\n**Output:**\nWrite your findings to exactly this path: /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/27268e87/context.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 0,
+  "usage": {
+    "input": 218023,
+    "output": 2898,
+    "cacheRead": 72701,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 21
+  },
+  "model": "google-antigravity/gemini-3.8-flash:low",
+  "attemptedModels": [
+    "google-antigravity/gemini-3.8-flash:low"
+  ],
+  "modelAttempts": [
+    {
+      "model": "google-antigravity/gemini-3.8-flash:low",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 218023,
+        "output": 2898,
+        "cacheRead": 72701,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 21
+      }
+    }
+  ],
+  "durationMs": 49960,
+  "toolCount": 20,
+  "launchContractDigest": "c560d66b78f77a72f656152e497c1c61dde8ac2f08b232f7696a74655dba7227",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete executable paths, environment overrides (DSH_HOME, AGENT_OBS_DB), control plane steer/abort triggers, and sha256 prod DB verification documented with exact paths."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "which dsh pi node pnpm",
+          "result": "passed",
+          "summary": "Verified binary locations"
+        },
+        {
+          "command": "dsh --help",
+          "result": "passed",
+          "summary": "Verified dsh CLI arguments, flags, and profiles"
+        },
+        {
+          "command": "shasum -a 256 ~/.local/share/agent-obs/agent-obs.db",
+          "result": "passed",
+          "summary": "Captured production DB SHA-256 baseline"
+        }
+      ],
+      "validationOutput": [
+        "Wrote findings to /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/27268e87/context.md"
+      ],
+      "residualRisks": [
+        "none"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "None. Read-only scout analysis.",
+      "reviewFindings": [],
+      "manualNotes": "Preflight plan verified: DSH_HOME and AGENT_OBS_DB overrides fully prevent production mutation."
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": true
+    }
+  },
+  "transcriptPath": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/27268e87_scout_0_transcript.jsonl",
+  "timestamp": 1788531014123
+}

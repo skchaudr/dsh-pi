@@ -1,0 +1,170 @@
+{
+  "runId": "dd00e286",
+  "agent": "reviewer",
+  "task": "[Read from: /Users/sab-mini/repos/dsh-pi/plan.md, /Users/sab-mini/repos/dsh-pi/progress.md]\n\nRead-only verification in /Users/sab-mini/repos/dsh-pi. Validate the reported S0-S5 commits 7be47d5, 23c93e3, 3d0e5a6, d96122b against current code and tests. Inspect AGENTS.md first. Verify git status/divergence and remote relationship; inspect control verb implementation, ACP mirroring/adapter, audit/acknowledgement flow, and runtime entry points. Run the focused and full safe test suites and any non-mutating CLI help/status probes. Report exact established contracts that agent-observability should call, remaining gaps for a live round trip, and whether the four commits are ready for an ordinary push. Do not modify, commit, push, or contact external services.",
+  "exitCode": 0,
+  "usage": {
+    "input": 61300,
+    "output": 8202,
+    "cacheRead": 138880,
+    "cacheWrite": 0,
+    "cost": 0.6220000000000001,
+    "turns": 8
+  },
+  "model": "openai-codex/gpt-5.6-sol:high",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-sol:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-sol:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 61300,
+        "output": 8202,
+        "cacheRead": 138880,
+        "cacheWrite": 0,
+        "cost": 0.6220000000000001,
+        "turns": 8
+      }
+    }
+  ],
+  "durationMs": 243966,
+  "toolCount": 17,
+  "launchContractDigest": "bb660e7db67b2cbd4f35f616558813822cd3dfd5dec2066bd9269479472b6361",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete blocker and note findings cite src/index.ts, src/control.ts, src/acp-mirror.ts, and src/ingest.ts; residual risks and command results are recorded."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "git status --short --branch; git rev-list --left-right --count origin/main...HEAD",
+          "result": "passed",
+          "summary": "Tracked worktree clean; no staged files; local main is 0 behind and 4 ahead; .pi-subagents/ is untracked."
+        },
+        {
+          "command": "./node_modules/.bin/vitest run src/__tests__/trajectory-lineage.test.ts src/__tests__/ingest.test.ts src/__tests__/control.test.ts src/__tests__/guardrails.test.ts src/__tests__/acp-mirror.test.ts",
+          "result": "passed",
+          "summary": "5 files and 23 tests passed."
+        },
+        {
+          "command": "./node_modules/.bin/vitest run",
+          "result": "passed",
+          "summary": "13 files and 90 tests passed."
+        },
+        {
+          "command": "./node_modules/.bin/tsc -p tsconfig.json --noEmit && ./node_modules/.bin/tsc -p tsconfig.build.json --noEmit",
+          "result": "passed",
+          "summary": "Source and build configurations typechecked."
+        },
+        {
+          "command": "pnpm check",
+          "result": "failed",
+          "summary": "pnpm 11.5.3 stopped on ERR_PNPM_IGNORED_BUILDS after prepare/build succeeded."
+        },
+        {
+          "command": "./node_modules/.bin/tsx scripts/compat.ts",
+          "result": "failed",
+          "summary": "No help/status mode; default probe failed because ../pi/packages is absent."
+        }
+      ],
+      "validationOutput": [
+        "Commit chain: c1ec106 -> 7be47d5 -> 23c93e3 -> 3d0e5a6 -> d96122b.",
+        "Direct verification: 90/90 tests passed and both TypeScript configurations passed.",
+        "Runtime search found new managers/adapters referenced only by their modules, exports, and tests."
+      ],
+      "residualRisks": [
+        "Remote freshness remains unverified without an external fetch.",
+        "Missing plan.md and progress.md prevent full milestone-spec attestation.",
+        "No live DSH/ACP round trip exists, and control acknowledgements can overstate actual execution."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "No tracked working-tree diff. HEAD contains four linear local commits ahead of the locally cached origin/main; .pi-subagents/ is untracked.",
+      "reviewFindings": [
+        "blocker: src/index.ts:25-29,427-535 - S0-S5 APIs are exported but disconnected from runtime lifecycle.",
+        "blocker: src/control.ts:209-224,262-284,301-339,397-414 - verbs may report success without an executing callback/controller.",
+        "blocker: src/acp-mirror.ts:79-93,163-200 - mirrored cancel outcome can contradict the actual control result.",
+        "blocker: src/ingest.ts:174-180,342-380 - translation state never advances beyond turn 1.",
+        "note: repository pnpm check gate currently fails before running its test phase."
+      ],
+      "manualNotes": "Read-only review made no source edits, commits, pushes, fetches, or external-service calls."
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": true
+    }
+  },
+  "transcriptPath": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/dd00e286_reviewer_0_transcript.jsonl",
+  "timestamp": 1788530556138
+}

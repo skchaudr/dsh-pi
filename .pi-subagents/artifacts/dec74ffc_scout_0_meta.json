@@ -1,0 +1,139 @@
+{
+  "runId": "dec74ffc",
+  "agent": "scout",
+  "task": "C00-A read-only contract discovery in /Users/sab-mini/repos/dsh-pi and installed @deepseek-ai/dsh-* package sources/types. Find the authoritative DSH session event writer and sequence allocator used by a plugin; exact session.append/event types/interfaces; event persistence location and lifecycle guarantees; how src/index.ts can access the active session/agent; the direction of Pi ExtensionEvent vs canonical DSH SessionEvent; the correct seam for registering/unregistering ControlPlaneManager handles; and how derived trajectory snapshots should consume flat persisted events. Cite exact paths/lines and propose the smallest deep module interface. Avoid direct JSONL writers and avoid edits.\n\n---\n**Output:**\nWrite your findings to exactly this path: /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/dec74ffc/context.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 0,
+  "usage": {
+    "input": 163487,
+    "output": 3625,
+    "cacheRead": 601125,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 30
+  },
+  "model": "google-antigravity/gemini-3.8-flash:low",
+  "attemptedModels": [
+    "google-antigravity/gemini-3.8-flash:low"
+  ],
+  "modelAttempts": [
+    {
+      "model": "google-antigravity/gemini-3.8-flash:low",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 163487,
+        "output": 3625,
+        "cacheRead": 601125,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 30
+      }
+    }
+  ],
+  "durationMs": 80745,
+  "toolCount": 29,
+  "launchContractDigest": "357dfb3ede85c33958eacc67394e2b818637006d933098ff55dfa58e445768d2",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Discovered and documented authoritative types, paths, and line references in node_modules/@deepseek-ai/dsh-session and src/ into /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/dec74ffc/context.md"
+        }
+      ],
+      "changedFiles": [
+        ".pi-subagents/artifacts/outputs/dec74ffc/context.md"
+      ],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "find node_modules/@deepseek-ai -type f",
+          "result": "passed",
+          "summary": "Located installed package sources and type definitions"
+        }
+      ],
+      "validationOutput": [
+        "Confirmed Session.append signature, SessionEventMap, SurfaceOp, and src/ lifecycle seams without edits to production code."
+      ],
+      "residualRisks": [
+        "none"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Generated read-only contract discovery documentation artifact.",
+      "reviewFindings": [
+        "no blockers"
+      ],
+      "manualNotes": "Read-only discovery complete; artifact saved to the designated authoritative path."
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": true
+    }
+  },
+  "transcriptPath": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/dec74ffc_scout_0_transcript.jsonl",
+  "timestamp": 1788531044894
+}

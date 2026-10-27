@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "id": "8a1862c7-c1f0-41e1-a2d6-f025ddd16aa9",
+  "title": "Execute read-only DSH-C00 preflight for DSH-CANARY-01. Across /Users/sab-mini/repos/dsh-pi, /User...",
+  "objective": "Execute read-only DSH-C00 preflight for DSH-CANARY-01. Across /Users/sab-mini/repos/dsh-pi, /Users/sab-mini/repos/agent-observability, installed @deepseek-ai/dsh-session persistence sources, and local Pi session logs: (1) identify one authentic local Pi parent session containing a real subagent dispatch/lineage event sequence suitable for a local test fixture; report path, SHA-256, exact event types/fields, and any privacy/sanitization requirement without copying data; (2) prove the configured DSH persistence adapter path, compression, flush, and reload APIs, including how tests can force readable uncompressed JSONL or decode zstd; (3) determine whether custom event types control/intervention and subagent/descriptor can be appended and replayed under the generated known-event catalog, with an exact supported alternative if rejected; (4) state how translated source seq becomes source metadata while Session.append allocates canonical seq; (5) provide exact commands and pass/fail gates. No mutations, no secret reads, no provider calls. Cite exact files/lines.",
+  "status": "completed",
+  "createdAt": "2026-09-05T00:32:13.906Z",
+  "updatedAt": "2026-09-05T00:36:31.952Z",
+  "runs": [
+    {
+      "runId": "b343f683-a572-4f8c-a43b-3714b62060d1",
+      "mode": "workflow",
+      "asyncDir": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/b343f683-a572-4f8c-a43b-3714b62060d1",
+      "status": "complete",
+      "startedAt": "2026-09-05T00:32:13.908Z",
+      "completedAt": "2026-09-05T00:36:31.952Z"
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "b343f683-a572-4f8c-a43b-3714b62060d1",
+      "key": "split-proof-c00",
+      "status": "completed",
+      "startedAt": "2026-09-05T00:32:13.931Z",
+      "updatedAt": "2026-09-05T00:35:08.777Z",
+      "artifactPaths": [
+        "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/331fe529/context.md",
+        "/Users/sab-mini/.pi/agent/sessions/subagent/331fe529/run-0/session.jsonl"
+      ],
+      "runId": "331fe529",
+      "agent": "scout",
+      "task": "Execute read-only DSH-C00 preflight for DSH-CANARY-01. Across /Users/sab-mini/repos/dsh-pi, /Users/sab-mini/repos/agent-observability, installed @deepseek-ai/dsh-session persistence sources, and local Pi session logs: (1) identify one authentic local Pi parent session containing a real subagent dispatch/lineage event sequence suitable for a local test fixture; report path, SHA-256, exact event types/fields, and any privacy/sanitization requirement without copying data; (2) prove the configured DSH persistence adapter path, compression, flush, and reload APIs, including how tests can force readable uncompressed JSONL or decode zstd; (3) determine whether custom event types control/intervention and subagent/descriptor can be appended and replayed under the generated known-event catalog, with an exact supported alternative if rejected; (4) state how translated source seq becomes source metadata while Session.append allocates canonical seq; (5) provide exact commands and pass/fail gates. No mutations, no secret reads, no provider calls. Cite exact files/lines.",
+      "completedAt": "2026-09-05T00:35:08.777Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/subagent/331fe529/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-05T00:35:08.777Z",
+        "status": "completed"
+      }
+    },
+    {
+      "workflowRunId": "b343f683-a572-4f8c-a43b-3714b62060d1",
+      "key": "split-proof-c00-check",
+      "status": "completed",
+      "startedAt": "2026-09-05T00:35:08.779Z",
+      "updatedAt": "2026-09-05T00:36:31.718Z",
+      "artifactPaths": [
+        "/Users/sab-mini/.pi/agent/sessions/subagent/878177fc/run-0/session.jsonl"
+      ],
+      "runId": "878177fc",
+      "agent": "reviewer",
+      "task": "Independently verify this DSH-C00 preflight against live source. Return READY or BLOCKED for the first two implementation packets, with exact corrections and the smallest ready frontier. Reject invented methods, unverified event vocabulary, unsafe fixture use, direct JSONL writes, and production DB writes.\n\nSCOUT REPORT:\n\n# Code Context\n\n## Files Retrieved\n1. `/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-31-17-908Z_01a06777-7814-735b-9cea-c12c7e517afe.jsonl` (lines 1-55) - Authentic Pi parent session showing root session initiation, parallel subagent dispatch (`subagent` toolCall), async run handle (`38b52918-...`), subagent wait, child descriptors, and `subagent-notify` custom message.\n2. `/Users/sab-mini/repos/dsh-pi/node_modules/@deepseek-ai/dsh-session/lib/index.js` (lines 1029-1060, 1303-1475, 1775-1800) - Session class, `append` implementation, canonical monotonic `seq` assignment, and storage record decoding.\n3. `/Users/sab-mini/repos/dsh-pi/node_modules/@deepseek-ai/dsh-session/lib/types/known-event-types.js` (lines 15-70) - The generated 44-event catalog (`KNOWN_SESSION_EVENT_TYPES`), containing `subagent/descriptor` and omitting `control/intervention`.\n4. `/Users/sab-mini/.config/deepseek-harness/packages/session/session-persistence/src/coordinator.ts` (lines 850-915, 1050-1070) - Persistence coordinator verification: `assertEventsSupported` enforces catalog check unless `event.ignorable === true`.\n5. `/Users/sab-mini/.config/deepseek-harness/packages/session/session-persistence-jsonl/src/index.ts` (lines 20-80) and `src/format.ts` (lines 10-35) - JSONL backend configuration, directory resolution, `.jsonl.zstd` vs uncompressed `.jsonl` via `compression: 'none'`, and chunk row packing.\n\n## Key Findings\n\n### 1. Authentic Local Pi Parent Session\n- **Path**: `/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-31-17-908Z_01a06777-7814-735b-9cea-c12c7e517afe.jsonl`\n- **SHA-256**: `30c38c589335f8625f04416f187f035614a48d43939cc1387f403279464c1d8f`\n- **Size**: 556,102 bytes (158 records).\n- **Exact Event Sequence**:\n  - Line 1: `session` (`id: \"01a06777-7814-735b-9cea-c12c7e517afe\"`, `cwd: \"/Users/sab-mini/repos/agent-observability\"`).\n  - Line 49: `message` (`role: \"assistant\"`, `toolCall name: \"subagent\"`, `workflowScript: \"const results=await runs.all([...]);\"`).\n  - Line 50: `message` (`role: \"toolResult\"`, `toolName: \"subagent\"`, `details.mode: \"workflow\"`, `details.runId: \"38b52918-6cc0-43fe-ae17-a855979e066b\"`).\n  - Line 51: `message` (`role: \"assistant\"`, `toolCall name: \"subagent_wait\"`).\n  - Line 52: `message` (`role: \"toolResult\"`, `toolName: \"subagent_wait\"`, child run IDs `442aea0f`, `107d1d79`, `5f08d673`).\n  - Line 53: `custom_message` (`customType: \"subagent-notify\"`, background workflow completion).\n- **Privacy/Sanitization Requirement**: Redact user paths (`/Users/sab-mini`), developer commit SHAs, and model reasoning trace signatures (`thinkingSignature`, encrypted content tokens).\n\n### 2. DSH Persistence Adapter & Compression\n- **Path Layout**: `<root>/<sanitized-project-dir>/<session-id>/session.jsonl.zstd` (under `~/.dsh/sessions/`).\n- **Forcing Uncompressed Plaintext**: Configure `session-persistence-jsonl` with `{ compression: 'none', packChunks: false }` to write `.jsonl` directly.\n- **Decoding Zstd**: Use CLI `zstd -dc <path>` or `@deepseek-ai/dsh-session-persistence-jsonl` decoder helpers (`decompressZstdFrame`).\n- **Flush & Reload**: Flush is triggered via `sessionStore.flush(session)` -> Cordis `'session/flush'`, writing dirty buffers. Reload runs through `PersistenceCoordinator.prepareSession(id)` calling `backend.loadStored(id)` and `Session.fromRestore()`.\n\n### 3. Custom Event Catalog & Alternatives\n- `subagent/descriptor` is present in `KNOWN_SESSION_EVENT_TYPES`.\n- `control/intervention` is absent. `Session.append` permits it in memory, but on disk reload `PersistenceCoordinator.assertEventsSupported()` will reject the entire session with `SessionFormatUnsupportedError` unless marked `ignorable: true`.\n- **Supported Alternative**: Provide `ignorable: true` in the event record, or wrap intervention events under known catalog types like `hook/invoked` or `tool-workflow/run-start`.\n\n### 4. Sequence Mapping & Allocation\n- `Session.append` automatically allocates canonical monotonic `seq = this.log.length`.\n- Source sequence numbers are preserved through the optional surface metadata parameter `opts[0].sourceEventSeqs` (e.g. `s.append(type, data, { sourceEventSeqs: [sourceSeq] })`), or stored inside payload `data`.\n\n## Start Here\nStart with `/Users/sab-mini/.config/deepseek-harness/packages/session/session-persistence/src/coordinator.ts` to inspect the event admission and replay validation rules (`assertEventsSupported`).",
+      "completedAt": "2026-09-05T00:36:31.718Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/subagent/878177fc/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-05T00:36:31.718Z",
+        "status": "completed"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "kind": "status",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/b343f683-a572-4f8c-a43b-3714b62060d1/status.json"
+    },
+    {
+      "kind": "other",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/b343f683-a572-4f8c-a43b-3714b62060d1/events.jsonl",
+      "description": "Lifecycle events"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/331fe529/context.md"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/sab-mini/.pi/agent/sessions/subagent/878177fc/run-0/session.jsonl"
+    }
+  ],
+  "receipts": [],
+  "cwd": "/Users/sab-mini/repos/dsh-pi",
+  "ownerSessionId": "/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-19-00-878Z_01a0676c-390e-7ef8-b728-46b26b2c0393.jsonl",
+  "summary": "Workflow completed with 2 child run(s). Return: {\n  \"key\": \"split-proof-c00-check\",\n  \"ok\": true,\n  \"runId\": \"878177fc\",\n  \"output\": \"## Review\\n- **BLOCKED — DSH-W02A:** `plan.md` and `progress.md` are absent; only `.pi-subagents/artifacts/outputs/51a7cea8/plan.md` exists.\\n- Blocker: `src/index.ts:427-535` does not mount ingestion, persistence, control registration, or ACP transport.\\n- Blocker: use `agent.session.append(...)`; never emit `session/event` or write JSONL directly. Flush through the configured session store/persistence coordinator.\\n- Blocker: `control/intervention` is absent from `known-event-types.js:15-70`; `ignorable: true`, `hook/invoked`, and invented acknowledgements are not verified replacements.\\n- Blocker: actual methods are `steer(request)` and `abort(request)`, not `steerSession`/`abortSession` (`src/control.ts:112+`).\\n- Blocker: several verbs can succeed without actuation (`src/control.ts:209-224,262-284,301-339,397-414`); ACP also records success before abort resolves (`src/acp-mirror.ts:79-93,163-200` Trace: 4 event(s)."
+}

@@ -1,0 +1,137 @@
+{
+  "runId": "a65b46ce",
+  "agent": "scout",
+  "task": "C00 follow-up, read-only. Find an executable deterministic Pi-backed DSH integration-test/canary path in /Users/sab-mini/repos/dsh-pi. Inspect existing tests and installed DSH test helpers for creating a real DSH Agent/Session, applying the dsh-pi plugin, registering a fake/local LlmAdapter, exercising one Pi-backed turn or extension lifecycle, registering a real ControlPlaneManager handle, and proving steer/abort acknowledgement with zero network/secrets. Produce exact test harness imports, setup sequence, command, timeout, expected events, and cleanup. Validate actual method names in control.ts and avoid invented CLI verbs. If a fully executable route is absent, state the smallest missing test seam. Do not edit or run provider calls.\n\n---\n**Output:**\nWrite your findings to exactly this path: /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/a65b46ce/context.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 0,
+  "usage": {
+    "input": 135264,
+    "output": 3317,
+    "cacheRead": 398998,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 20
+  },
+  "model": "google-antigravity/gemini-3.8-flash:low",
+  "attemptedModels": [
+    "google-antigravity/gemini-3.8-flash:low"
+  ],
+  "modelAttempts": [
+    {
+      "model": "google-antigravity/gemini-3.8-flash:low",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 135264,
+        "output": 3317,
+        "cacheRead": 398998,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 20
+      }
+    }
+  ],
+  "durationMs": 53809,
+  "toolCount": 19,
+  "launchContractDigest": "a67fa94ac85a5fe80a19cb03a065aab3ddd88f4c866f917ad41282931ca00ad8",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete executable test harness, method corrections, and missing seams detailed in /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/a65b46ce/context.md"
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "pnpm list",
+          "result": "passed",
+          "summary": "Verified installed packages and absence of @deepseek-ai/dsh-agent-loop"
+        }
+      ],
+      "validationOutput": [
+        "Confirmed ControlPlaneManager methods (steer, abort) and Cordis test harness structure"
+      ],
+      "residualRisks": [
+        "none"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Read-only inspection and artifact output generation",
+      "reviewFindings": [
+        "no blockers"
+      ],
+      "manualNotes": "Documented full Vitest harness with setup, execution, and cleanup in context.md"
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": true
+    }
+  },
+  "transcriptPath": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/a65b46ce_scout_0_transcript.jsonl",
+  "timestamp": 1788531256707
+}

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "3c14f21a-17f1-4964-a8bf-e98b6dc1c09b",
+  "title": "Produce a Pi Node Task Packet ledger for the DSH live-backbone canary. This is planning only, rea...",
+  "objective": "Produce a Pi Node Task Packet ledger for the DSH live-backbone canary. This is planning only, read-only. Canon: DSH is the canonical SessionEvent/control plane; agent-observability is a downstream projection; Sab owns completion. Desired terminal evidence: one real Pi-backed DSH session emits durable canonical events, preserves folded subagent lineage, executes one five-verb intervention through ControlPlaneManager, persists the audit receipt, and is ingested by agent-observability. Verified state: /Users/sab-mini/repos/dsh-pi main is clean, 4 commits ahead of origin, 90 tests/typecheck pass, upstream push returns HTTP 403; S0-S5 modules are exported but unused by src/index.ts apply(); ControlPlaneManager/audit and GuardrailMonitor are in-memory; control methods can return success without an actuator; ACP cancel audit outcome can diverge. In /Users/sab-mini/repos/agent-observability, DSH parser exists but default roots omit .dsh, live DB has zero DSH sessions, JSON-string tool arguments are dropped, subCalls flatten without parent identity, control outcome fields are lost, and SSE streams turns only. Split the mission into the smallest dependency-ordered packets; one writer per repo/worktree; include a publication-route gate, DSH integration design/readiness packet, DSH implementation packet, real runtime canary packet, projection-fidelity packet, ingestion verification packet, independent review, and Sab completion gate. Each packet needs id, outcome, depends_on, run route using live chains/agents, boundary/stop condition, checkpoint evidence, status, and milestone. Include authority, wave/concurrency table, verification commands, failure escalation, evidence roll-up, and exact ready frontier. Preserve positive framing and avoid selecting service ports or UI work. Return the ledger inline as YAML plus a concise rationale.",
+  "status": "completed",
+  "createdAt": "2026-09-04T14:03:59.516Z",
+  "updatedAt": "2026-09-04T14:05:44.266Z",
+  "runs": [
+    {
+      "runId": "82278d80-cdb3-4eb0-97c9-73380a8070b8",
+      "mode": "workflow",
+      "asyncDir": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/82278d80-cdb3-4eb0-97c9-73380a8070b8",
+      "status": "complete",
+      "startedAt": "2026-09-04T14:03:59.517Z",
+      "completedAt": "2026-09-04T14:05:44.266Z"
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "82278d80-cdb3-4eb0-97c9-73380a8070b8",
+      "key": "backbone-ledger-g38",
+      "status": "completed",
+      "startedAt": "2026-09-04T14:03:59.529Z",
+      "updatedAt": "2026-09-04T14:05:44.047Z",
+      "artifactPaths": [
+        "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/51a7cea8/plan.md",
+        "/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-04T14-03-59-552Z_01a06cbb-c2c0-7938-bc42-da9cd7519180.jsonl"
+      ],
+      "runId": "51a7cea8",
+      "agent": "planner",
+      "task": "Produce a Pi Node Task Packet ledger for the DSH live-backbone canary. This is planning only, read-only. Canon: DSH is the canonical SessionEvent/control plane; agent-observability is a downstream projection; Sab owns completion. Desired terminal evidence: one real Pi-backed DSH session emits durable canonical events, preserves folded subagent lineage, executes one five-verb intervention through ControlPlaneManager, persists the audit receipt, and is ingested by agent-observability. Verified state: /Users/sab-mini/repos/dsh-pi main is clean, 4 commits ahead of origin, 90 tests/typecheck pass, upstream push returns HTTP 403; S0-S5 modules are exported but unused by src/index.ts apply(); ControlPlaneManager/audit and GuardrailMonitor are in-memory; control methods can return success without an actuator; ACP cancel audit outcome can diverge. In /Users/sab-mini/repos/agent-observability, DSH parser exists but default roots omit .dsh, live DB has zero DSH sessions, JSON-string tool arguments are dropped, subCalls flatten without parent identity, control outcome fields are lost, and SSE streams turns only. Split the mission into the smallest dependency-ordered packets; one writer per repo/worktree; include a publication-route gate, DSH integration design/readiness packet, DSH implementation packet, real runtime canary packet, projection-fidelity packet, ingestion verification packet, independent review, and Sab completion gate. Each packet needs id, outcome, depends_on, run route using live chains/agents, boundary/stop condition, checkpoint evidence, status, and milestone. Include authority, wave/concurrency table, verification commands, failure escalation, evidence roll-up, and exact ready frontier. Preserve positive framing and avoid selecting service ports or UI work. Return the ledger inline as YAML plus a concise rationale.",
+      "completedAt": "2026-09-04T14:05:44.047Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-04T14-03-59-552Z_01a06cbb-c2c0-7938-bc42-da9cd7519180.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-04T14:05:44.047Z",
+        "status": "completed"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "kind": "status",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/82278d80-cdb3-4eb0-97c9-73380a8070b8/status.json"
+    },
+    {
+      "kind": "other",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/82278d80-cdb3-4eb0-97c9-73380a8070b8/events.jsonl",
+      "description": "Lifecycle events"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/51a7cea8/plan.md"
+    }
+  ],
+  "receipts": [],
+  "cwd": "/Users/sab-mini/repos/dsh-pi",
+  "ownerSessionId": "/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-19-00-878Z_01a0676c-390e-7ef8-b728-46b26b2c0393.jsonl",
+  "summary": "Workflow completed with 1 child run(s). Return: {\n  \"key\": \"backbone-ledger-g38\",\n  \"ok\": true,\n  \"runId\": \"51a7cea8\",\n  \"output\": \"# Node Task Packet Ledger: DSH Live-Backbone Canary\\n\\n## 1. Plan Overview & Canon\\n\\n```yaml\\nplan_id: DSH-CANARY-01\\nshape: pipeline\\nproblem: >\\n  DSH contains tested modular implementations for S0-S5 (lineage folding, canonical event ingest, 5-verb control, guardrails, ACP mirror) that remain unmounted in the active runtime, while agent-observability omits DSH from default discovery roots and drops structured tool arguments.\\ngoal: >\\n  Execute one verified Pi-backed DSH session that emits durable canonical SessionEvents with folded subagent lineage, executes a five-verb control intervention through ControlPlaneManager, persists the audit receipt, and ingests into agent-observability with high-fidelity tool and control metadata.\\nsources:\\n  - /Users/sab-mini/repos/dsh-pi/src/index.ts\\n  - /Users/sab-mini/repos/dsh-pi/src/control.ts\\n  - /Users/sab-mini/repos/dsh-pi/src/ingest.ts\\n  - /Users/sab-min Trace: 2 event(s)."
+}

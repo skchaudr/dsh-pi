@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "id": "fc735007-644a-40ca-981f-c6896a23a2ec",
+  "title": "In /Users/sab-mini/repos/dsh-pi, read-only: report `git remote -v`, current branch/upstream, and ...",
+  "objective": "In /Users/sab-mini/repos/dsh-pi, read-only: report `git remote -v`, current branch/upstream, and whether gh CLI is authenticated plus account scopes if available. Do not contact or modify remotes; no fetch/push. Return exact concise evidence.",
+  "status": "completed",
+  "createdAt": "2026-09-04T14:04:58.617Z",
+  "updatedAt": "2026-09-04T14:05:02.056Z",
+  "runs": [
+    {
+      "runId": "call_RRYPM6CZeBebtVljLkRslogO|fc_0b4f796519a8ed07016a9ad0089a0087d0bde6b29992f3a477",
+      "mode": "workflow",
+      "agent": "quick-grab-mercury",
+      "status": "completed",
+      "startedAt": "2026-09-04T14:05:02.056Z",
+      "completedAt": "2026-09-04T14:05:02.056Z",
+      "usage": {
+        "tokens": 13213
+      }
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "call_RRYPM6CZeBebtVljLkRslogO|fc_0b4f796519a8ed07016a9ad0089a0087d0bde6b29992f3a477",
+      "key": "remote-check",
+      "status": "completed",
+      "startedAt": "2026-09-04T14:04:58.627Z",
+      "updatedAt": "2026-09-04T14:05:02.056Z",
+      "artifactPaths": [
+        "/Users/sab-mini/.pi/agent/sessions/subagent/3ddf05d7/run-0/session.jsonl"
+      ],
+      "runId": "3ddf05d7",
+      "agent": "quick-grab-mercury",
+      "task": "In /Users/sab-mini/repos/dsh-pi, read-only: report `git remote -v`, current branch/upstream, and whether gh CLI is authenticated plus account scopes if available. Do not contact or modify remotes; no fetch/push. Return exact concise evidence.",
+      "completedAt": "2026-09-04T14:05:02.056Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/subagent/3ddf05d7/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-04T14:05:02.056Z",
+        "status": "completed"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [],
+  "receipts": [],
+  "cwd": "/Users/sab-mini/repos/dsh-pi",
+  "ownerSessionId": "/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-19-00-878Z_01a0676c-390e-7ef8-b728-46b26b2c0393.jsonl",
+  "summary": "Workflow completed.\n\nReturn:\n{\n  \"key\": \"remote-check\",\n  \"ok\": true,\n  \"runId\": \"3ddf05d7\",\n  \"output\": \"Git remote `v`: `git -C /Users/sab-mini/repos/dsh-pi remote -v` → no tool access. Current branch/upstream: `git -C /Users/sab-mini/repos/dsh-pi rev-parse --abbrev-ref HEAD` and `git -C /Users/sab-mini/repos/dsh-pi rev-parse --abbrev-ref --symbolic-full-name @{u}` → no tool access. GH CLI auth: `gh auth status --show-token` → no tool access. Unable to fetch data without a shell/git tool.\",\n  \"artifactPaths\": [\n    \"/Users/sab-mini/.pi/agent/sessions/subagent/3ddf05d7/run-0/session.jsonl\"\n  ],\n  \"results\": [\n    {\n      \"index\": 0,\n      \"agent\": \"quick-grab-mercury\",\n      \"task\": \"In /Users/sab-mini/repos/dsh-pi, read-only: report `git remote -v`, current branch/upstream, and whether gh CLI is authenticated plus account scopes if available. Do not contact or modify remotes; no fetch/push. Return exact concise evidence.\",\n      \"launchContractDigest\": \"72047f948206a2e364c4576b82f69d359836db3d3dabbe19ea73f397f08ae9f3\",\n      \"launchResolvedExtensions\": {\n        \"version\": 1,\n        \"source\": \"launch-resolved\",\n        \"disableAmbientExtensions\": false,\n        \"runtime\": [\n          \"sha256:6e34319d161c1cc5\"\n        ],\n        \"configured\": [],\n        \"effective\": [\n          \"sha256:6e34319d161c1cc5\"\n        ],\n        \"omitted\": {\n          \"runtime\": 0,\n          \"configured\": 0,\n          \"effective\": 0\n        }\n      },\n      \"exitCode\": 0,\n      \"outputState\": \"present\",\n      \"usage\": {\n        \"input\": 12995,\n        \"output\": 218,\n        \"cacheRead\": 291,\n        \"cacheWrite\": 0,\n        \"cost\": 0.0034195249999999996,\n        \"turns\": 3\n      },\n      \"model\": \"inception/mercury-2:minimal\",\n      \"thinking\": \"minimal\",\n      \"turnBudget\": {\n        \"maxTurns\": 8,\n        \"graceTurns\": 1,\n        \"outcome\": \"within-budget\",\n        \"turnCount\": 3\n      },\n      \"context\": \"fresh\",\n      \"progressSummary\": {\n        \"toolCount\": 2,\n        \"tokens\":...",
+  "acceptance": {
+    "status": "not-required",
+    "evidenceStatus": "not-required",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "none",
+      "explicit": true,
+      "inferredReason": [
+        "write-capable worker/task"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Implement the requested change without widening scope",
+          "evidence": [],
+          "severity": "required"
+        }
+      ],
+      "evidence": [],
+      "verify": [],
+      "stopRules": [],
+      "reason": "disabled by deprecated false shorthand"
+    },
+    "inferredReason": [
+      "write-capable worker/task"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Implement the requested change without widening scope",
+        "evidence": [],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": []
+  }
+}

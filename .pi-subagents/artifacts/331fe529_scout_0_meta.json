@@ -1,0 +1,149 @@
+{
+  "runId": "331fe529",
+  "agent": "scout",
+  "task": "Execute read-only DSH-C00 preflight for DSH-CANARY-01. Across /Users/sab-mini/repos/dsh-pi, /Users/sab-mini/repos/agent-observability, installed @deepseek-ai/dsh-session persistence sources, and local Pi session logs: (1) identify one authentic local Pi parent session containing a real subagent dispatch/lineage event sequence suitable for a local test fixture; report path, SHA-256, exact event types/fields, and any privacy/sanitization requirement without copying data; (2) prove the configured DSH persistence adapter path, compression, flush, and reload APIs, including how tests can force readable uncompressed JSONL or decode zstd; (3) determine whether custom event types control/intervention and subagent/descriptor can be appended and replayed under the generated known-event catalog, with an exact supported alternative if rejected; (4) state how translated source seq becomes source metadata while Session.append allocates canonical seq; (5) provide exact commands and pass/fail gates. No mutations, no secret reads, no provider calls. Cite exact files/lines.\n\n---\n**Output:**\nWrite your findings to exactly this path: /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/331fe529/context.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 0,
+  "usage": {
+    "input": 376019,
+    "output": 11350,
+    "cacheRead": 4406349,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 62
+  },
+  "model": "google-antigravity/gemini-3.8-flash:low",
+  "attemptedModels": [
+    "google-antigravity/gemini-3.8-flash:low"
+  ],
+  "modelAttempts": [
+    {
+      "model": "google-antigravity/gemini-3.8-flash:low",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 376019,
+        "output": 11350,
+        "cacheRead": 4406349,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 62
+      }
+    }
+  ],
+  "durationMs": 174784,
+  "toolCount": 61,
+  "launchContractDigest": "80e9538e482938355294da2c9dcf5986932e46bd7b46ed67a5cee87934545358",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Conducted full read-only preflight analysis across local Pi logs, dsh-pi dependencies, and deepseek-harness persistence packages; identified valid session 01a06777 (SHA256 30c38c589335f8625f04416f187f035614a48d43939cc1387f403279464c1d8f), proved zstd/plaintext toggle via compression:'none', established catalog constraint for control/intervention vs subagent/descriptor, and documented seq allocation mechanics."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "python3 -c 'import hashlib; data=open(\"/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-31-17-908Z_01a06777-7814-735b-9cea-c12c7e517afe.jsonl\", \"rb\").read(); print(hashlib.sha256(data).hexdigest())'",
+          "result": "passed",
+          "summary": "Computed authentic session SHA-256 digest"
+        },
+        {
+          "command": "node -e 'const dsh = require(\"@deepseek-ai/dsh-session\"); console.log(dsh.KNOWN_SESSION_EVENT_TYPES.has(\"subagent/descriptor\"), dsh.KNOWN_SESSION_EVENT_TYPES.has(\"control/intervention\"))'",
+          "result": "passed",
+          "summary": "Verified event catalog inclusion/exclusion"
+        },
+        {
+          "command": "zstd -dc ~/.dsh/sessions/--Users-sab-mini--/12e932cc-dde7-4427-bd1c-09cb56cbaedc/session.jsonl.zstd | head -n 1",
+          "result": "passed",
+          "summary": "Confirmed zstd stream decode and session header schema"
+        }
+      ],
+      "validationOutput": [
+        "SHA-256: 30c38c589335f8625f04416f187f035614a48d43939cc1387f403279464c1d8f",
+        "subagent/descriptor: true, control/intervention: false",
+        "zstd session header: {\"type\":\"session\",\"version\":0,\"id\":\"12e932cc-dde7-4427-bd1c-09cb56cbaedc\"}"
+      ],
+      "residualRisks": [
+        "Using control/intervention without ignorable: true will cause PersistenceCoordinator to reject session load/replay on disk."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "No source files modified (read-only preflight).",
+      "reviewFindings": [
+        "info: control/intervention is not in KNOWN_SESSION_EVENT_TYPES; must include ignorable: true when persisted to avoid reload failure."
+      ],
+      "manualNotes": "Tool budget limit blocked disk write to /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/331fe529/context.md; full markdown findings are returned directly in response per subagent runtime rules."
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": true
+    }
+  },
+  "transcriptPath": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/331fe529_scout_0_transcript.jsonl",
+  "timestamp": 1788568508775
+}

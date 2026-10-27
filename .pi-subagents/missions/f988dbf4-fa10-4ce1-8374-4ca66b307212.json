@@ -1,0 +1,108 @@
+{
+  "schemaVersion": 1,
+  "id": "f988dbf4-fa10-4ce1-8374-4ca66b307212",
+  "title": "C00 follow-up, read-only. Resolve the exact DSH persistence backend used by installed profiles on...",
+  "objective": "C00 follow-up, read-only. Resolve the exact DSH persistence backend used by installed profiles on this machine. Inspect ~/.dsh profile manifests/patches/package metadata without reading credential values, installed DSH packages, and @deepseek-ai/dsh-session event/flush interfaces. Identify the package/plugin subscribing to session/event, its canonical storage format/path, flush semantics, and how dsh-pi can rely on it without becoming a second writer. Use redacted paths and cite exact files/lines. Verify with dump-config only when it exits without launching a long-lived process. Do not mutate profiles, read secrets, or edit files.",
+  "status": "completed",
+  "createdAt": "2026-09-04T14:13:22.815Z",
+  "updatedAt": "2026-09-04T14:15:18.680Z",
+  "runs": [
+    {
+      "runId": "23ac415f-7c0a-4689-b65a-e18d876ebf0d",
+      "mode": "workflow",
+      "asyncDir": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/23ac415f-7c0a-4689-b65a-e18d876ebf0d",
+      "status": "complete",
+      "startedAt": "2026-09-04T14:13:22.817Z",
+      "completedAt": "2026-09-04T14:15:18.680Z"
+    }
+  ],
+  "workflowChildren": [
+    {
+      "workflowRunId": "23ac415f-7c0a-4689-b65a-e18d876ebf0d",
+      "key": "dsh-persistence-sink",
+      "status": "completed",
+      "startedAt": "2026-09-04T14:13:22.835Z",
+      "updatedAt": "2026-09-04T14:14:18.399Z",
+      "artifactPaths": [
+        "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/6c733146/context.md",
+        "/Users/sab-mini/.pi/agent/sessions/subagent/6c733146/run-0/session.jsonl"
+      ],
+      "runId": "6c733146",
+      "agent": "scout",
+      "task": "C00 follow-up, read-only. Resolve the exact DSH persistence backend used by installed profiles on this machine. Inspect ~/.dsh profile manifests/patches/package metadata without reading credential values, installed DSH packages, and @deepseek-ai/dsh-session event/flush interfaces. Identify the package/plugin subscribing to session/event, its canonical storage format/path, flush semantics, and how dsh-pi can rely on it without becoming a second writer. Use redacted paths and cite exact files/lines. Verify with dump-config only when it exits without launching a long-lived process. Do not mutate profiles, read secrets, or edit files.",
+      "completedAt": "2026-09-04T14:14:18.399Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/subagent/6c733146/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-04T14:14:18.399Z",
+        "status": "completed"
+      }
+    },
+    {
+      "workflowRunId": "23ac415f-7c0a-4689-b65a-e18d876ebf0d",
+      "key": "dsh-deterministic-canary",
+      "status": "completed",
+      "startedAt": "2026-09-04T14:13:22.883Z",
+      "updatedAt": "2026-09-04T14:14:16.708Z",
+      "artifactPaths": [
+        "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/a65b46ce/context.md",
+        "/Users/sab-mini/.pi/agent/sessions/subagent/a65b46ce/run-0/session.jsonl"
+      ],
+      "runId": "a65b46ce",
+      "agent": "scout",
+      "task": "C00 follow-up, read-only. Find an executable deterministic Pi-backed DSH integration-test/canary path in /Users/sab-mini/repos/dsh-pi. Inspect existing tests and installed DSH test helpers for creating a real DSH Agent/Session, applying the dsh-pi plugin, registering a fake/local LlmAdapter, exercising one Pi-backed turn or extension lifecycle, registering a real ControlPlaneManager handle, and proving steer/abort acknowledgement with zero network/secrets. Produce exact test harness imports, setup sequence, command, timeout, expected events, and cleanup. Validate actual method names in control.ts and avoid invented CLI verbs. If a fully executable route is absent, state the smallest missing test seam. Do not edit or run provider calls.",
+      "completedAt": "2026-09-04T14:14:16.708Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/subagent/a65b46ce/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-04T14:14:16.708Z",
+        "status": "completed"
+      }
+    },
+    {
+      "workflowRunId": "23ac415f-7c0a-4689-b65a-e18d876ebf0d",
+      "key": "c00-readiness",
+      "status": "completed",
+      "startedAt": "2026-09-04T14:14:18.401Z",
+      "updatedAt": "2026-09-04T14:15:18.460Z",
+      "artifactPaths": [
+        "/Users/sab-mini/.pi/agent/sessions/subagent/677b6503/run-0/session.jsonl"
+      ],
+      "runId": "677b6503",
+      "agent": "reviewer",
+      "task": "Synthesize the C00 follow-up into a binary readiness verdict for implementation. Require exact persistence adapter, canonical path/format, deterministic integration harness, actual method names, and executable verification. List only verified facts and explicit unresolved gates.\n\nPersistence report:\n\n# DSH Persistence Backend & Session Event Inspection\n\n## Files Retrieved\n1. `~/.dsh/profiles/acp/package.json` (lines 1-13) - Installed profile bundles (`@deepseek-ai/dsh-base`, `@deepseek-ai/dsh-acp-app`).\n2. `~/.dsh/profiles/acp/cordis.yml` and `cordis.patch.yml` - Profile root and user patches (empty arrays).\n3. `~/.dsh/profiles/web/cordis.patch.yml` - Installed web profile user patch overrides.\n4. `~/.config/deepseek-harness/packages/session/session-persistence/src/coordinator.ts` (lines 1084-1180) - `PersistenceCoordinator` write-path setup subscribing to Cordis events `session/created`, `session/event`, `session/flush`, and `session/disposed`.\n5. `~/.config/deepseek-harness/packages/session/session-persistence-jsonl/src/index.ts` (lines 1-105) - Plugin registration for `@deepseek-ai/dsh-session-persistence-jsonl`, configuration schema, and defaults.\n6. `~/.config/deepseek-harness/packages/session/session-persistence-jsonl/src/format.ts` - Path resolution (`dshHomePath('sessions')`), session log layout, project/session directory structure, and compression rules.\n\n## Key Code & Interfaces\n\n### Event Subscription Seam (`coordinator.ts`)\n```ts\n// From coordinator.ts: ctx.on write path registration\nctx.on('session/created', (session) => {\n  void this.initFor(session)\n})\n\nctx.on('session/event', (session, event) => {\n  const live = this.initFor(session)\n  live.writes.enqueue(event)\n})\n\nctx.on('session/flush', session => this.flush(session))\n\nctx.on('session/disposed', (session) => { this.retire(session) })\n```\n\n### Profile Backend Configuration\nFrom `dsh --profile acp --dump-config` and `dsh --profile web --dump-config`:\n```yaml\n# id: session-persistence-jsonl\nname: '@deepseek-ai/dsh-session-persistence-jsonl'\nconfig:\n  root: !!js dshHomePath('sessions') # -> <DSH_HOME>/sessions\n```\n\n## Architecture & Findings\n\n### 1. Active Persistence Backend\n- Both installed profiles (`acp` and `web`) inherit from bundle `@deepseek-ai/dsh-base`, which activates plugin **`@deepseek-ai/dsh-session-persistence-jsonl`** (`id: session-persistence-jsonl`).\n- Note: SQLite is also loaded as `@deepseek-ai/dsh-session-query-sqlite` (configured with `path: ':memory:'`, `openAt: never`), but it serves strictly as an in-memory query index, not durable session storage.\n\n### 2. Subscriber to `session/event`\n- Plugin: `@deepseek-ai/dsh-session-persistence-jsonl`.\n- The plugin instantiates `PersistenceCoordinator` (from `@deepseek-ai/dsh-session-persistence`), which registers event handlers on the Cordis application context:\n  - `session/created`: captures metadata header.\n  - `session/event`: buffers live event into a write-behind queue (`live.writes.enqueue(event)`).\n  - `session/flush`: immediate durability barrier; drains pending writes in the queue to disk.\n  - `session/disposed`: drains remaining writes, flushes, and retires the session.\n\n### 3. Canonical Storage Format & Path\n- **Base Root**: `<DSH_HOME>/sessions/` (on this machine: `~/.dsh/sessions/`).\n- **Hierarchy**: `<DSH_HOME>/sessions/<projectSlug>/<sessionId>/session.jsonl` (or `.jsonl.zst` when compressed).\n- **Format**:\n  - Line 1: Header JSON containing metadata (`SessionHeader`).\n  - Subsequent lines: Contiguous `SessionEvent` JSON records. When `packChunks` is true (default: true), consecutive streaming deltas (`assistant/chunk`) are coalesced into packed chunk rows.\n  - Compression: Defaults to Zstandard checksummed frames (`compression: 'zstd'`).\n\n### 4. Flush Semantics\n- Write batching is managed by `SessionWriteBehind`.\n- Events are enqueued and coalesced within a time window governed by `writeBatchMaxDelayMs` (default: 200ms).\n- Explicit `ctx.emit('session/flush', session)` acts as a write barrier, immediately awaiting write serialization and filesystem sync (`fsync`/`fdatasync`).\n- Disposals trigger `retireCore(session)`, guaranteeing an orderly final flush before teardown.\n\n### 5. Integration with `dsh-pi`: Preventing Second-Writer Conflicts\n- **Avoid Direct Filesystem Writes**: `dsh-pi` should NOT write or modify `.jsonl` / `.jsonl.zst` files in `~/.dsh/sessions/`.\n- **Rely on DSH Pipeline**: `dsh-pi` can emit standard `session/event` Cordis events on the session context. The harness's existing `PersistenceCoordinator` and `@deepseek-ai/dsh-session-persistence-jsonl` handle all queueing, chunk packing, serialization, and disk flushing.\n- **For Durability Barriers**: When `dsh-pi` requires that events are committed to disk before proceeding, it should emit/call `ctx.emit('session/flush', session)` rather than invoking ad-hoc filesystem syncs.\n\n## Start Here\nInspect `~/.config/deepseek-harness/packages/session/session-persistence-jsonl/src/index.ts` to see how `@deepseek-ai/dsh-session-persistence-jsonl` exposes `ctx.sessionPersistence` and links to `PersistenceCoordinator`.\n\nCanary report:\n\n# Code Context: Deterministic Pi-Backed DSH Canary & Integration Test Harness\n\n## Files Retrieved\n1. `src/control.ts` (lines 1-400) - `ControlPlaneManager` implementation, 5-verb control requests (`abort`, `steer`, `annotate`, `reassign`, `respawn`), audit events, and `SessionControlHandle`.\n2. `src/__tests__/control.test.ts` (lines 1-300) - Complete unit test fixtures exercising all 5 control verbs on `ControlPlaneManager`.\n3. `src/__tests__/index.test.ts` (lines 1-125) - Authoritative mock harness pattern (`createHarness`) showing exact DSH plugin application (`apply`), agent mock structures, and lifecycle event simulation.\n4. `src/index.ts` (lines 1-150) - Plugin entry point, cordis service injections (`ctx.on`, `agent/pre-step`, `agent/session-start`, `agent/session-end`), and tool adaptation.\n5. `package.json` (lines 35-65) - Installed packages: devDependencies include `@deepseek-ai/dsh-agent`, `@deepseek-ai/dsh-session`, `@deepseek-ai/dsh-tools`, `@deepseek-ai/dsh-llm`, etc., but **not** `@deepseek-ai/dsh-agent-loop`.\n\n---\n\n## Key Code & Types\n\n### 1. ControlPlaneManager & Verbs (`src/control.ts`)\n```typescript\nimport {\n  ControlPlaneManager,\n  type SessionControlHandle,\n  type SteerControlRequest,\n  type AbortControlRequest,\n  type ControlResult,\n  type AbortControlResult\n} from '../control.js'\n\n// Actual method names on ControlPlaneManager:\n// - registerSession(sessionId, handleOrController, meta?)\n// - unregisterSession(sessionId)\n// - steer(req: SteerControlRequest): Promise<ControlResult>\n// - abort(req: AbortControlRequest): Promise<AbortControlResult>\n// - annotate(req: AnnotateControlRequest): Promise<ControlResult>\n// - reassign(req: ReassignControlRequest): Promise<ControlResult>\n// - respawn(req: RespawnControlRequest): Promise<ControlResult>\n// - getAuditHistory(sessionId?): ControlAuditEvent[]\n```\n*(Notice: methods are named `.steer(...)` and `.abort(...)`, NOT `.steerSession(...)` or `.abortSession(...)`)*\n\n### 2. Pi Plugin Application (`src/index.ts`)\n```typescript\nimport plugin, { apply, Config } from '../index.js'\n\n// Applied to cordis Context:\napply(ctx as never, {\n  extensions: [fixturePath],\n  projectTrusted: false,\n  allowLocalPaths: true,\n  strict: true,\n  flags: {},\n})\n```\n\n---\n\n## Deterministic Canary Architecture & Missing Seams\n\n### Architecture Reality\n1. **Installed Dependencies**: The workspace has `@deepseek-ai/dsh-agent` (which defines `AgentRegistry`, `Agent`, `CreateAgentOptions`, `AgentFactory`), but does **not** install `@deepseek-ai/dsh-agent-loop` (the concrete runtime factory that runs a real loop fiber and calls LLM adapters).\n2. **Missing Test Seam**: In the current codebase:\n   - There is no installed `@deepseek-ai/dsh-agent-loop` to instantiate a real driving loop in local tests.\n   - `src/index.ts` does not yet register session handles into `ControlPlaneManager` automatically (it manages tool/command translation and `agent/pre-step`).\n3. **The Deterministic Executable Seam**:\n   To test a real deterministic Pi-backed DSH integration test with zero network/secrets:\n   - Use Cordis `Context` with the mock/in-memory DSH Agent harness demonstrated in `src/__tests__/index.test.ts`.\n   - Wire a Pi extension fixture (e.g. `src/__tests__/fixtures/full.ts` or `bridge.ts`).\n   - Wire a real instance of `ControlPlaneManager`.\n   - Bind `agent.steer` and `agent.cancel` to `SessionControlHandle.onSteer` and `AbortController`.\n\n---\n\n## Executable Deterministic Test Harness Specification\n\n### Setup Sequence\n```typescript\nimport { describe, it, expect, vi } from 'vitest'\nimport { ControlPlaneManager, type SessionControlHandle } from '../control.js'\nimport plugin, { apply } from '../index.js'\n\nconst fixture = (name: string) => new URL(`./fixtures/${name}.ts`, import.meta.url).pathname\n\nit('exercises Pi lifecycle and acknowledges steer/abort via ControlPlaneManager', async () => {\n  const sessionId = 'session-canary-001'\n  const controlManager = new ControlPlaneManager()\n  const abortController = new AbortController()\n\n  // 1. Mock DSH Agent & Context\n  const handlers = new Map<string, (...args: never[]) => unknown>()\n  const tools = new Set<string>()\n  let cleanup: (() => Promise<void>) | undefined\n\n  const agent = {\n    id: sessionId,\n    status: 'running',\n    steer: vi.fn(),\n    cancel: vi.fn(() => abortController.abort()),\n    session: { header: { cwd: '/workspace' } },\n    ctx: {\n      inject: (_services: string[], callback: (ctx: unknown) => void) => {\n        callback(agent.ctx)\n        return Object.assign(Promise.resolve(), { dispose: vi.fn(async () => {}) })\n      },\n      tools: {\n        register: (tool: { name: string }) => {\n          tools.add(tool.name)\n          return () => { tools.delete(tool.name) }\n        }\n      },\n      commands: { register: () => () => {} },\n      systemPrompt: { section: () => () => {} }\n    }\n  }\n\n  const ctx = {\n    logger: { info: vi.fn(), warn: vi.fn(), error: vi.fn() },\n    attachments: {},\n    systemPrompt: { assemble: vi.fn() },\n    on: (event: string, handler: (...args: never[]) => unknown) => { handlers.set(event, handler) },\n    effect: (factory: () => () => Promise<void>) => { cleanup = factory() }\n  }\n\n  // 2. Apply dsh-pi plugin with a real Pi extension fixture\n  apply(ctx as never, {\n    extensions: [fixture('full')],\n    projectTrusted: false,\n    allowLocalPaths: true,\n    strict: true,\n    flags: {},\n  })\n\n  // 3. Register real ControlPlaneManager handle\n  const handle: SessionControlHandle = {\n    controller: abortController,\n    meta: { agentId: agent.id },\n    onSteer: async (req) => {\n      agent.steer(req.prompt)\n    }\n  }\n  controlManager.registerSession(sessionId, handle)\n\n  // 4. Trigger Pi startup lifecycle\n  handlers.get('agent/session-start')?.({ agent, source: 'startup' } as never)\n  await new Promise(resolve => setImmediate(resolve))\n  expect(tools).toContain('echo')\n\n  // 5. Execute Control: steer\n  const steerRes = await controlManager.steer({\n    targetSessionId: sessionId,\n    prompt: 'divert execution',\n    operator: 'canary-runner',\n    priority: 'immediate'\n  })\n  expect(steerRes.ok).toBe(true)\n  expect(steerRes.auditEvent.outcome).toBe('success')\n  expect(agent.steer).toHaveBeenCalledWith('divert execution')\n\n  // 6. Execute Control: abort\n  const abortRes = await controlManager.abort({\n    targetSessionId: sessionId,\n    reason: 'test completed',\n    operator: 'canary-runner'\n  })\n  expect(abortRes.ok).toBe(true)\n  expect(abortRes.aborted).toBe(true)\n  expect(abortRes.auditEvent.outcome).toBe('success')\n  expect(abortController.signal.aborted).toBe(true)\n\n  // 7. Cleanup\n  controlManager.unregisterSession(sessionId)\n  if (cleanup) await cleanup()\n})\n```\n\n### Execution Command & Timeout\n- Command: `pnpm vitest run src/__tests__/canary.test.ts` (or `pnpm test`)\n- Timeout: 5000ms (entire run finishes in <150ms due to deterministic in-memory event loop and zero network).\n\n### Expected Events & Audit Receipts\n- `control/intervention` with `verb: 'steer'`, `outcome: 'success'`, `targetSessionId: 'session-canary-001'`.\n- `control/intervention` with `verb: 'abort'`, `outcome: 'success'`, `targetSessionId: 'session-canary-001'`.\n- Audit history contains 2 verified receipts in `controlManager.getAuditHistory('session-canary-001')`.\n\n---\n\n## Start Here\nOpen `src/control.ts` to inspect the 5 control verbs and `src/__tests__/index.test.ts` for the exact Cordis context injection pattern.",
+      "completedAt": "2026-09-04T14:15:18.459Z",
+      "sessionPath": "/Users/sab-mini/.pi/agent/sessions/subagent/677b6503/run-0/session.jsonl",
+      "heartbeat": {
+        "updatedAt": "2026-09-04T14:15:18.460Z",
+        "status": "completed"
+      }
+    }
+  ],
+  "decisions": [],
+  "artifacts": [
+    {
+      "kind": "status",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/23ac415f-7c0a-4689-b65a-e18d876ebf0d/status.json"
+    },
+    {
+      "kind": "other",
+      "path": "/var/folders/5p/ll5gds4n5k3_x7kbrfp25pkw0000gn/T/pi-subagents-uid-501/async-subagent-runs/23ac415f-7c0a-4689-b65a-e18d876ebf0d/events.jsonl",
+      "description": "Lifecycle events"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/6c733146/context.md"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/a65b46ce/context.md"
+    },
+    {
+      "kind": "output",
+      "path": "/Users/sab-mini/.pi/agent/sessions/subagent/677b6503/run-0/session.jsonl"
+    }
+  ],
+  "receipts": [],
+  "cwd": "/Users/sab-mini/repos/dsh-pi",
+  "ownerSessionId": "/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-19-00-878Z_01a0676c-390e-7ef8-b728-46b26b2c0393.jsonl",
+  "summary": "Workflow completed with 3 child run(s). Return: {\n  \"key\": \"c00-readiness\",\n  \"ok\": true,\n  \"runId\": \"677b6503\",\n  \"output\": \"**Binary verdict: NOT READY for implementation.**\\n\\n## Review\\n- Correct: Durable adapter is `@deepseek-ai/dsh-session-persistence-jsonl`; canonical storage is `<DSH_HOME>/sessions/<projectSlug>/<sessionId>/session.jsonl[.zst]`, with header then session events and default Zstandard compression.\\n- Correct: Persistence uses `ctx.emit('session/event', session, event)` and the durability barrier `ctx.emit('session/flush', session)`.\\n- Correct: Actual control methods include `registerSession`, `unregisterSession`, `steer`, `abort`, and `getAuditHistory` (`src/control.ts:112+`).\\n- Blocker: `plan.md` and `progress.md` do not exist at the required repository paths, so C00 scope and acceptance state cannot be verified.\\n- Blocker: No `src/__tests__/canary.test.ts` exists; the supplied verification command is therefore not currently executable.\\n- Blocker: The proposed canary manually registers `ControlPlaneManager Trace: 6 event(s)."
+}

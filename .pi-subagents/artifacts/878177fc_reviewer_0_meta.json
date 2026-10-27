@@ -1,0 +1,143 @@
+{
+  "runId": "878177fc",
+  "agent": "reviewer",
+  "task": "[Read from: /Users/sab-mini/repos/dsh-pi/plan.md, /Users/sab-mini/repos/dsh-pi/progress.md]\n\nIndependently verify this DSH-C00 preflight against live source. Return READY or BLOCKED for the first two implementation packets, with exact corrections and the smallest ready frontier. Reject invented methods, unverified event vocabulary, unsafe fixture use, direct JSONL writes, and production DB writes.\n\nSCOUT REPORT:\n\n# Code Context\n\n## Files Retrieved\n1. `/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-31-17-908Z_01a06777-7814-735b-9cea-c12c7e517afe.jsonl` (lines 1-55) - Authentic Pi parent session showing root session initiation, parallel subagent dispatch (`subagent` toolCall), async run handle (`38b52918-...`), subagent wait, child descriptors, and `subagent-notify` custom message.\n2. `/Users/sab-mini/repos/dsh-pi/node_modules/@deepseek-ai/dsh-session/lib/index.js` (lines 1029-1060, 1303-1475, 1775-1800) - Session class, `append` implementation, canonical monotonic `seq` assignment, and storage record decoding.\n3. `/Users/sab-mini/repos/dsh-pi/node_modules/@deepseek-ai/dsh-session/lib/types/known-event-types.js` (lines 15-70) - The generated 44-event catalog (`KNOWN_SESSION_EVENT_TYPES`), containing `subagent/descriptor` and omitting `control/intervention`.\n4. `/Users/sab-mini/.config/deepseek-harness/packages/session/session-persistence/src/coordinator.ts` (lines 850-915, 1050-1070) - Persistence coordinator verification: `assertEventsSupported` enforces catalog check unless `event.ignorable === true`.\n5. `/Users/sab-mini/.config/deepseek-harness/packages/session/session-persistence-jsonl/src/index.ts` (lines 20-80) and `src/format.ts` (lines 10-35) - JSONL backend configuration, directory resolution, `.jsonl.zstd` vs uncompressed `.jsonl` via `compression: 'none'`, and chunk row packing.\n\n## Key Findings\n\n### 1. Authentic Local Pi Parent Session\n- **Path**: `/Users/sab-mini/.pi/agent/sessions/--Users-sab-mini-repos-agent-observability--/2026-09-03T13-31-17-908Z_01a06777-7814-735b-9cea-c12c7e517afe.jsonl`\n- **SHA-256**: `30c38c589335f8625f04416f187f035614a48d43939cc1387f403279464c1d8f`\n- **Size**: 556,102 bytes (158 records).\n- **Exact Event Sequence**:\n  - Line 1: `session` (`id: \"01a06777-7814-735b-9cea-c12c7e517afe\"`, `cwd: \"/Users/sab-mini/repos/agent-observability\"`).\n  - Line 49: `message` (`role: \"assistant\"`, `toolCall name: \"subagent\"`, `workflowScript: \"const results=await runs.all([...]);\"`).\n  - Line 50: `message` (`role: \"toolResult\"`, `toolName: \"subagent\"`, `details.mode: \"workflow\"`, `details.runId: \"38b52918-6cc0-43fe-ae17-a855979e066b\"`).\n  - Line 51: `message` (`role: \"assistant\"`, `toolCall name: \"subagent_wait\"`).\n  - Line 52: `message` (`role: \"toolResult\"`, `toolName: \"subagent_wait\"`, child run IDs `442aea0f`, `107d1d79`, `5f08d673`).\n  - Line 53: `custom_message` (`customType: \"subagent-notify\"`, background workflow completion).\n- **Privacy/Sanitization Requirement**: Redact user paths (`/Users/sab-mini`), developer commit SHAs, and model reasoning trace signatures (`thinkingSignature`, encrypted content tokens).\n\n### 2. DSH Persistence Adapter & Compression\n- **Path Layout**: `<root>/<sanitized-project-dir>/<session-id>/session.jsonl.zstd` (under `~/.dsh/sessions/`).\n- **Forcing Uncompressed Plaintext**: Configure `session-persistence-jsonl` with `{ compression: 'none', packChunks: false }` to write `.jsonl` directly.\n- **Decoding Zstd**: Use CLI `zstd -dc <path>` or `@deepseek-ai/dsh-session-persistence-jsonl` decoder helpers (`decompressZstdFrame`).\n- **Flush & Reload**: Flush is triggered via `sessionStore.flush(session)` -> Cordis `'session/flush'`, writing dirty buffers. Reload runs through `PersistenceCoordinator.prepareSession(id)` calling `backend.loadStored(id)` and `Session.fromRestore()`.\n\n### 3. Custom Event Catalog & Alternatives\n- `subagent/descriptor` is present in `KNOWN_SESSION_EVENT_TYPES`.\n- `control/intervention` is absent. `Session.append` permits it in memory, but on disk reload `PersistenceCoordinator.assertEventsSupported()` will reject the entire session with `SessionFormatUnsupportedError` unless marked `ignorable: true`.\n- **Supported Alternative**: Provide `ignorable: true` in the event record, or wrap intervention events under known catalog types like `hook/invoked` or `tool-workflow/run-start`.\n\n### 4. Sequence Mapping & Allocation\n- `Session.append` automatically allocates canonical monotonic `seq = this.log.length`.\n- Source sequence numbers are preserved through the optional surface metadata parameter `opts[0].sourceEventSeqs` (e.g. `s.append(type, data, { sourceEventSeqs: [sourceSeq] })`), or stored inside payload `data`.\n\n## Start Here\nStart with `/Users/sab-mini/.config/deepseek-harness/packages/session/session-persistence/src/coordinator.ts` to inspect the event admission and replay validation rules (`assertEventsSupported`).",
+  "exitCode": 0,
+  "usage": {
+    "input": 28953,
+    "output": 3717,
+    "cacheRead": 71168,
+    "cacheWrite": 0,
+    "cost": 0.29185900000000004,
+    "turns": 6
+  },
+  "model": "openai-codex/gpt-5.6-sol:high",
+  "attemptedModels": [
+    "openai-codex/gpt-5.6-sol:high"
+  ],
+  "modelAttempts": [
+    {
+      "model": "openai-codex/gpt-5.6-sol:high",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 28953,
+        "output": 3717,
+        "cacheRead": 71168,
+        "cacheWrite": 0,
+        "cost": 0.29185900000000004,
+        "turns": 6
+      }
+    }
+  ],
+  "durationMs": 82876,
+  "toolCount": 17,
+  "launchContractDigest": "4b0bd6d3b1d41212c3ef2abb402f1ba848641ca6acfe6d2a7c160be4edf18c4b",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "attested",
+    "evidenceStatus": "attested",
+    "explicit": false,
+    "effectiveAcceptance": {
+      "level": "attested",
+      "explicit": false,
+      "inferredReason": [
+        "read-only/reviewer-style agent"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Return concrete findings with file paths and severity when applicable",
+          "evidence": [
+            "review-findings",
+            "residual-risks"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "review-findings",
+        "residual-risks"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "read-only/reviewer-style agent"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Return concrete findings with file paths and severity when applicable",
+        "evidence": [
+          "review-findings",
+          "residual-risks"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Concrete blockers and corrections cite src/index.ts, src/control.ts, src/acp-mirror.ts, installed DSH event catalog/persistence sources, and artifact plan §5."
+        }
+      ],
+      "changedFiles": [],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "git status --short && git log -5 --oneline --decorate && git diff HEAD",
+          "result": "passed",
+          "summary": "HEAD d96122b; only .pi-subagents/ untracked; no tracked diff."
+        }
+      ],
+      "validationOutput": [
+        "plan.md: ENOENT",
+        "progress.md: ENOENT",
+        "Recovered artifact plan cannot replace the missing canonical packet ledger."
+      ],
+      "residualRisks": [
+        "Agent-observability parser/model contracts remain unverified.",
+        "No catalog-supported durable intervention event has been selected.",
+        "Lifecycle event vocabulary in prior scout reports is inconsistent."
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Review-only; no changes.",
+      "reviewFindings": [
+        "blocker: DSH-W02A is not ready because native lifecycle, persistence, actuation, and supported audit vocabulary are unresolved.",
+        "blocker: DSH-W02B is not ready because its upstream event/storage contract and target schema are unverified.",
+        "blocker: artifact plan §5 can target the production observability DB."
+      ],
+      "manualNotes": "READY frontier is corrected W01B contract verification only, alongside human W01A; both implementation packets remain BLOCKED."
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": false
+    }
+  },
+  "transcriptPath": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/878177fc_reviewer_0_transcript.jsonl",
+  "timestamp": 1788568591717
+}

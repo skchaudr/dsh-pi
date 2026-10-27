@@ -1,0 +1,184 @@
+{
+  "runId": "c42657d4",
+  "agent": "context-builder",
+  "task": "Synthesize C00 contract discovery from two scout reports. Produce an executable evidence-backed contract packet, separating verified facts from unresolved gates. Preserve DSH as sole canonical event writer; distinguish flat events from derived trajectory snapshots; define the smallest deep module interface for dsh-pi runtime integration; provide exact canary commands only where verified; and list stop conditions.\n\nDSH native writer report:\n\n# Code Context: DSH Session Event Writer and Lifecycle Architecture\n\n## Files Retrieved\n1. `node_modules/@deepseek-ai/dsh-session/lib/types/index.d.ts` (lines 99-270, lines 300-380) - Authoritative `Session` class, `SessionStore`, and `session.append(type, data, ...opts)` implementation/signatures.\n2. `node_modules/@deepseek-ai/dsh-session/lib/types/types.d.ts` (lines 215-450) - Authoritative `SessionEventMap`, `SessionEvent`, `SurfaceEventType`, `SurfaceOp`, and `SurfaceIntent` types.\n3. `src/index.ts` (lines 1-135, lines 360-560) - Plugin entry point, `apply(ctx: Context, config: Config)`, agent lifecycle handlers (`session/event`, `before_agent_start`, `agent/disposed`, `ctx.sessions`).\n4. `src/control.ts` (lines 1-140) - `ControlPlaneManager`, `SessionControlHandle`, and registration lifecycle.\n5. `src/ingest.ts` (lines 1-180) - Ingestion adapter between Pi raw session events and canonical DSH events.\n6. `src/trajectory.ts` (lines 1-90) - Trajectory tree folding for flat tool events into hierarchical `ToolCallBlock`s.\n\n## Key Code\n\n### 1. Authoritative Event Writer and Sequence Allocator\nIn DSH, the single authoritative event writer and sequence allocator is `Session.prototype.append`:\n```typescript\n// node_modules/@deepseek-ai/dsh-session/lib/types/index.d.ts:212\nappend<T extends SessionEventType>(\n  type: T,\n  data: SessionEventMap[T],\n  ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : []\n): SessionEvent<T>;\n```\n- **Sequence Allocator**: Monotonic `seq` is assigned internally within `session.append` (`this.log.length`). No plugin or external caller allocates `seq` directly when writing live sessions.\n- **Surface Intent**: Events producing LLM messages (`SurfaceEventType`: `'user/message' | 'assistant/message' | 'tool/result'`) require a trailing `SurfaceIntent`:\n  ```typescript\n  export interface SurfaceIntent {\n    surfaceOp: SurfaceOp; // 'append' | { op: 'replace', start: number, end: number }\n    sourceEventSeqs?: number[];\n  }\n  ```\n- **Envelope Produced**:\n  ```typescript\n  export type SessionEvent<T extends SessionEventType = SessionEventType> = {\n    type: T;\n    seq: number;\n    time: number;\n    data: SessionEventMap[T];\n    ignorable?: true;\n    sourceEventSeqs?: number[];\n    surfaceOp?: SurfaceOp;\n  };\n  ```\n\n### 2. Persistence Location and Lifecycle Guarantees\n- **In-Memory Store**: `SessionStore` (`ctx.sessions`) holds in-memory active sessions (`node_modules/@deepseek-ai/dsh-session/lib/types/index.d.ts`).\n- **Persistence Boundary**: `SessionStore` does not write directly to disk or JSONL files. Instead, persistence backends subscribe to the post-commit `ctx.on('session/event', (session, event) => ...)` hook and flush when `ctx.sessions.flush(session)` or session disposal is invoked.\n- **Synchronous Append / Fail-Closed**: `session.append` validates inputs via `isJsonValue`, checks surface replacements, commits to internal log synchronously, and then publishes to listeners. Reentrant appends during publication throw an error.\n\n### 3. How `src/index.ts` Accesses Active Session / Agent\n- In `src/index.ts`:\n  - `ctx.inject = ['agents', 'tools', 'commands', 'systemPrompt', 'attachments']` (and optionally `sessions`).\n  - Via Agent registration: `ctx.on('agent/ready', ({ agent }) => ...)` or intercepting `before_agent_start`, `session/event`, where `agent.session` is directly available:\n    ```typescript\n    const session: Session = agent.session;\n    ```\n  - Via Session store: `ctx.sessions.get(sessionId)` or `ctx.on('session/created', session => ...)`.\n\n### 4. Direction of Pi ExtensionEvent vs Canonical DSH SessionEvent\n- **Pi `ExtensionEvent`**: Internal agent runtime lifecycle events produced by/for Pi extensions (e.g. `turn_start`, `agent_start`, `turn_end`, `agent_end`, `tool_call`, `message`).\n- **Canonical DSH `SessionEvent`**: The append-only, durable truth of the DSH agent interaction (`turn/start`, `turn/end`, `step/start`, `step/end`, `user/message`, `assistant/message`, `tool/call`, `tool/result`, `request/header`).\n- **Direction**:\n  - DSH Session and Agent drive Pi Extension Events (DSH `turn/start` -> Pi `turn_start`, DSH `turn/end` -> Pi `turn_end`/`agent_end`).\n  - Pi Extension outputs (e.g., custom user messages, steer/followup) are routed into DSH Agent methods (`agent.steer()`, `agent.followup()`, `agent.send()`), which in turn commit canonical DSH `SessionEvent`s through `session.append()`.\n\n### 5. Seam for Registering / Unregistering `ControlPlaneManager` Handles\n- **Registration Seam**: When an agent session mounts in `src/index.ts` (inside `mountAgent` or `ctx.on('agent/ready')`):\n  ```typescript\n  controlManager.registerSession(agent.session.header.id, {\n    controller: abortController,\n    onSteer: req => { agent.steer(createUserMessage({ content: [{ type: 'text', text: req.prompt }] })); },\n    onAnnotate: req => { /* append log-only annotation event */ },\n  });\n  ```\n- **Unregistration Seam**: In `ctx.on('agent/disposed', ({ agent }) => ...)`:\n  ```typescript\n  controlManager.unregisterSession(agent.session.header.id);\n  ```\n\n### 6. How Derived Trajectory Snapshots Should Consume Flat Persisted Events\n- A flat DSH `SessionEvent[]` or raw log contains flat sequences of `tool/call` and `tool/result`.\n- For subagent runs or tree-like hierarchies, subagent events carry `dispatchCallId` and `parentId`.\n- `foldFleetDispatches` and `foldSubagentRunToToolCallBlock` in `src/trajectory.ts` group child calls under parent `callId` into recursive `ToolCallBlock`s:\n  1. Index flat events into root tool calls and child calls mapped by `parentId` / `callId`.\n  2. Map subagent dispatches into `PiSubagentDispatchEvent`.\n  3. Recursively construct `ToolCallBlock` trees with nested `subCalls`.\n\n## Architecture\n- **Cordis Context (`ctx`)** orchestrates decoupled services: `agents`, `sessions`, `tools`.\n- **DSH Session (`Session`)** maintains the ground truth log and assigns monotonic sequences on `session.append`.\n- **DSH Agent (`Agent`)** orchestrates execution turns, dispatches LLM steps, and invokes tools.\n- **Pi Host Plugin (`src/index.ts`)** sits between DSH's Cordis lifecycle hooks and Pi's `PiExtensionRuntime`.\n- **Control Plane (`ControlPlaneManager`)** provides an out-of-band management surface (abort, steer, annotate) hooked into active agent handles during session lifetime.\n\n## Smallest Deep Module Interface Proposal\nTo bridge DSH session events without direct JSONL writing and preserving invariants:\n```typescript\nexport interface DshSessionEventWriter {\n  readonly sessionId: string;\n  append<T extends SessionEventType>(\n    type: T,\n    data: SessionEventMap[T],\n    ...opts: T extends SurfaceEventType ? [opts: SurfaceIntent] : []\n  ): SessionEvent<T>;\n}\n\nexport interface SessionControlBinding {\n  register(agent: Agent, controlManager: ControlPlaneManager): () => void;\n}\n```\n\n## Start Here\nOpen `node_modules/@deepseek-ai/dsh-session/lib/types/index.d.ts` (around line 212) and `src/index.ts` (around line 480) to inspect how `session.append` and agent event hooks interconnect.\n\nCanary preflight report:\n\n# Code Context\n\n## Files Retrieved\n1. `/Users/sab-mini/repos/dsh-pi/package.json` (lines 1-75) - Package configuration, dependencies (`@earendil-works/pi-coding-agent`, `@deepseek-ai/*`), and verification scripts (`check`, `test`, `compat`).\n2. `/Users/sab-mini/repos/dsh-pi/src/control.ts` (lines 1-366) - Backend for 5 control plane verbs: `abort`, `steer`, `annotate`, `reassign`, `respawn` with audit logs and events.\n3. `/Users/sab-mini/repos/dsh-pi/src/acp-mirror.ts` (lines 1-203) - ACP session mirroring and event synthesis (`session_start`, `steer_accepted`, `abort_acknowledged`).\n4. `/Users/sab-mini/repos/dsh-pi/src/guardrails.ts` (lines 1-191) - Guardrail metrics monitor (TTFT, cost, cache tracking).\n5. `/Users/sab-mini/repos/agent-observability/pyproject.toml` (lines 1-45) - Python CLI configuration for `agent-obs`.\n6. `/Users/sab-mini/repos/agent-observability/src/agent_obs/core/paths.py` (lines 1-60) - Default database path logic and `AGENT_OBS_DB` override handling.\n7. `/Users/sab-mini/repos/agent-observability/src/agent_obs/cli.py` (lines 1-100) - CLI options supporting `--db` and `AGENT_OBS_DB`.\n\n## Key Code & Commands\n\n### 1. Binaries and Package Scripts\n- **Binaries verified**:\n  - `dsh`: `/Users/sab-mini/.local/bin/dsh`\n  - `pi`: `/Users/sab-mini/.pi/agent/bin/pi`\n  - `node`: `/opt/homebrew/bin/node`\n  - `pnpm`: `/opt/homebrew/bin/pnpm`\n  - `agent-obs`: `/Users/sab-mini/repos/agent-observability/.venv/bin/agent-obs`\n- **Verification commands**:\n  - In `dsh-pi`: `pnpm check` (runs `vitest run`, `tsc --noEmit`, and `tsc -p tsconfig.build.json`)\n  - In `agent-observability`: `/Users/sab-mini/repos/agent-observability/.venv/bin/pytest tests`\n\n### 2. Isolated Environment Setup (Canary DSH & Agent-Obs)\nTo guarantee zero mutations to user profiles, credentials, and production databases:\n```bash\n# Set isolated sandbox dirs\nexport CANARY_DIR=$(mktemp -d /tmp/dsh-canary-XXXXXX)\nexport DSH_HOME=\"${CANARY_DIR}/dsh_home\"\nexport AGENT_OBS_DB=\"${CANARY_DIR}/agent-obs-canary.db\"\nmkdir -p \"${DSH_HOME}/profiles/canary\" \"${DSH_HOME}/sessions\"\n```\n\n### 3. Fake/Local Provider & Cordis Patch (No Paid APIs or Secrets)\nCanary execution uses a dummy mock provider or dry-run configuration in `cordis.patch.yml`:\n```yaml\n- id: system-prompt\n  config:\n    persona: \"Mock test agent\"\n- insert:\n    - id: dsh-pi\n      name: 'dsh-pi-host'\n      config:\n        extensions: []\n        projectTrusted: false\n        allowLocalPaths: false\n        strict: true\n```\nLaunch via:\n```bash\ndsh --profile canary --dump-config\n# Or run with ACP stdio interface in isolated headless/acp mode\ndsh acp --help\n```\n\n### 4. Known Session Creation & Steer / Abort Acknowledgement\nUsing `src/control.ts` and `src/acp-mirror.ts` interfaces:\n- Session created with ID e.g. `session-canary-001`.\n- Execute verb `steer` via `ControlPlaneManager.steerSession(\"session-canary-001\", { directive: \"stop test\" })`.\n- Execute verb `abort` via `ControlPlaneManager.abortSession(\"session-canary-001\", { reason: \"preflight-test\" })`.\n- Returns recorded event types: `steer_accepted` and `abort_acknowledged` in session event logs.\n\n### 5. Ingestion, Queries, and Production DB Protection\n- **Pre-execution hash capture**:\n  ```bash\n  shasum -a 256 ~/.local/share/agent-obs/agent-obs.db > /tmp/prod_db_pre.sha256\n  ```\n- **Canary ingestion into temporary DB**:\n  ```bash\n  /Users/sab-mini/repos/agent-observability/.venv/bin/agent-obs --db \"${AGENT_OBS_DB}\" ingest \"${DSH_HOME}/sessions\"\n  /Users/sab-mini/repos/agent-observability/.venv/bin/agent-obs --db \"${AGENT_OBS_DB}\" list\n  /Users/sab-mini/repos/agent-observability/.venv/bin/agent-obs --db \"${AGENT_OBS_DB}\" stats\n  ```\n- **Post-execution hash verification**:\n  ```bash\n  shasum -a 256 -c /tmp/prod_db_pre.sha256\n  ```\n- **Cleanup**:\n  ```bash\n  rm -rf \"${CANARY_DIR}\" /tmp/prod_db_pre.sha256\n  ```\n\n## Architecture\n- `dsh-pi-host` acts as a Cordis plugin for DSH profiles, wrapping Pi extensions and lifecycle handlers.\n- `ControlPlaneManager` handles `abort`, `steer`, `annotate`, `reassign`, and `respawn` events without requiring external model API calls.\n- `agent-observability` reads sessions and events via `agent_obs.cli`, parameterized completely by `AGENT_OBS_DB` and custom roots/paths.\n\n## Start Here\nOpen `src/control.ts` and `src/acp-mirror.ts` to see exact event payloads and verification steps for steer/abort verbs.\n\n---\n**Output:**\nWrite your findings to exactly this path: /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/c42657d4/context.md\nThis path is authoritative for this run.\nIgnore any other output filename or output path mentioned elsewhere, including output destinations in the base agent prompt, system prompt, or task instructions.",
+  "exitCode": 0,
+  "usage": {
+    "input": 102821,
+    "output": 2351,
+    "cacheRead": 0,
+    "cacheWrite": 0,
+    "cost": 0,
+    "turns": 7
+  },
+  "model": "google-antigravity/gemini-3.8-flash:low",
+  "attemptedModels": [
+    "google-antigravity/gemini-3.8-flash:low"
+  ],
+  "modelAttempts": [
+    {
+      "model": "google-antigravity/gemini-3.8-flash:low",
+      "success": true,
+      "exitCode": 0,
+      "usage": {
+        "input": 102821,
+        "output": 2351,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": 0,
+        "turns": 7
+      }
+    }
+  ],
+  "durationMs": 23340,
+  "toolCount": 6,
+  "launchContractDigest": "811b53bc3ae9d684b6e24a577047dc5dea1d2e60f63064cf38114480d376074c",
+  "launchResolvedExtensions": {
+    "version": 1,
+    "source": "launch-resolved",
+    "disableAmbientExtensions": false,
+    "runtime": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "configured": [],
+    "effective": [
+      "sha256:6e34319d161c1cc5"
+    ],
+    "omitted": {
+      "runtime": 0,
+      "configured": 0,
+      "effective": 0
+    }
+  },
+  "acceptance": {
+    "status": "checked",
+    "evidenceStatus": "checked",
+    "explicit": true,
+    "effectiveAcceptance": {
+      "level": "checked",
+      "explicit": true,
+      "inferredReason": [
+        "write-capable worker/task"
+      ],
+      "criteria": [
+        {
+          "id": "criterion-1",
+          "must": "Implement the requested change without widening scope",
+          "evidence": [
+            "changed-files",
+            "tests-added",
+            "commands-run",
+            "residual-risks",
+            "no-staged-files"
+          ],
+          "severity": "required"
+        }
+      ],
+      "evidence": [
+        "changed-files",
+        "tests-added",
+        "commands-run",
+        "residual-risks",
+        "no-staged-files"
+      ],
+      "verify": [],
+      "stopRules": []
+    },
+    "inferredReason": [
+      "write-capable worker/task"
+    ],
+    "criteria": [
+      {
+        "id": "criterion-1",
+        "must": "Implement the requested change without widening scope",
+        "evidence": [
+          "changed-files",
+          "tests-added",
+          "commands-run",
+          "residual-risks",
+          "no-staged-files"
+        ],
+        "severity": "required"
+      }
+    ],
+    "runtimeChecks": [
+      {
+        "id": "criterion:criterion-1",
+        "status": "passed",
+        "message": "Required criterion 'criterion-1' satisfied."
+      },
+      {
+        "id": "evidence:changed-files",
+        "status": "passed",
+        "message": "changed-files evidence present."
+      },
+      {
+        "id": "evidence:tests-added",
+        "status": "not-applicable",
+        "message": "tests-added evidence explicitly reported as not applicable."
+      },
+      {
+        "id": "evidence:commands-run",
+        "status": "passed",
+        "message": "commands-run evidence present."
+      },
+      {
+        "id": "evidence:residual-risks",
+        "status": "passed",
+        "message": "residual-risks evidence present."
+      },
+      {
+        "id": "evidence:no-staged-files",
+        "status": "passed",
+        "message": "no-staged-files evidence present."
+      },
+      {
+        "id": "no-staged-files",
+        "status": "passed",
+        "message": "No staged files detected."
+      }
+    ],
+    "verifyRuns": [],
+    "childReport": {
+      "criteriaSatisfied": [
+        {
+          "id": "criterion-1",
+          "status": "satisfied",
+          "evidence": "Synthesized C00 contract discovery into /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/c42657d4/context.md, distinguishing verified DSH event writer facts, trajectory folding, control plane seams, minimal module interfaces, and isolated canary commands without modifying project source code."
+        }
+      ],
+      "changedFiles": [
+        "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/c42657d4/context.md"
+      ],
+      "testsAddedOrUpdated": [],
+      "commandsRun": [
+        {
+          "command": "write /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/c42657d4/context.md",
+          "result": "passed",
+          "summary": "Wrote verified contract packet and architecture discovery document"
+        }
+      ],
+      "validationOutput": [
+        "Successfully wrote 7023 bytes to /Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/outputs/c42657d4/context.md"
+      ],
+      "residualRisks": [
+        "none"
+      ],
+      "noStagedFiles": true,
+      "diffSummary": "Generated authoritative context.md artifact with C00 contract discovery findings.",
+      "reviewFindings": [
+        "no blockers"
+      ],
+      "manualNotes": "Contract packet cleanly differentiates verified facts (DSH as authoritative writer, trajectory tree folding, control plane manager seams) from unresolved gates (disk persistence sink hook, ACP headless CLI flags)."
+    }
+  },
+  "effects": {
+    "fileMutation": {
+      "status": "not-applicable",
+      "expected": false,
+      "attempted": true
+    }
+  },
+  "transcriptPath": "/Users/sab-mini/repos/dsh-pi/.pi-subagents/artifacts/c42657d4_context-builder_0_transcript.jsonl",
+  "timestamp": 1788531068260
+}
