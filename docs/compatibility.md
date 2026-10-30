@@ -73,12 +73,14 @@ The read-only inventory on `/Users/weaxs/Desktop/Workspace/pi` found 17 `package
 - `pi-task-scheduler`: six tools, including its TypeBox literal-union schemas, `/cron`
 - `pi-channels`: `notify` with literal-union actions, `/channel`
 
-Two built fixtures fail before the compatibility layer runs:
+### SKIP_FIXTURE_BROKEN
 
-- `pi-browser-use/dist/index.js` references missing `./analyze-screenshot.js`
-- `pi-computer-use/dist/index.js` references missing `./config.js`
+These two packages fail before the host `dsh-pi` runs and are not host regressions. They are skipped in tests because they are stale/incomplete fixture build artifacts:
 
-Those are stale/incomplete fixture build artifacts. This repository does not rewrite or rebuild the source workspace to hide such failures.
+- `pi-browser-use`: references missing `dist/analyze-screenshot.js`
+- `pi-computer-use`: references missing `dist/config.js`
+
+This repository does not rewrite or rebuild the source workspace to hide such failures.
 
 ## Next implementation order
 
